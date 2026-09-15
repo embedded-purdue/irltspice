@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+// Complete placeholder, subject to change
+
+enum CommandType {
+    TOPOLOGY_REQUEST = 0;
+}
+
+message Command {
+    // Next ID: 2. Last added: command_type = 1
+    CommandType command_type = 1;  
+}
