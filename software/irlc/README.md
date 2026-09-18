@@ -5,6 +5,8 @@ The IRLTSPICE Compiler (irlc), synthesizes a user's netlist into a list of progr
 It's possible we got carried away with the acronymns.
 
 ## Setup
+1. Ensure systems packages are installed:
+    - Protobuf
 1. To build/setup env run:
     ```bash
     mkdir build
@@ -26,7 +28,8 @@ C++20. Compiles in CI using the following compiler versions:
 ### Libraries:
 - [Boost - 1.90](www.boost.org/)
 - [Catch2 - 3.12.0](https://github.com/catchorg/Catch2)
+- [Protobuf - 36.1.0](https://protobuf.dev/) - system package
 
 ### Tooling:
-- cmake >= 3.30
+- cmake >= 3.30 - system package
 - [cpm](https://github.com/cpm-cmake/cpm.cmake)@0.42.1 (auto-downloaded by CMake)

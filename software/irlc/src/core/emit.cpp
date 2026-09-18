@@ -10,6 +10,8 @@
 
 #include <boost/asio.hpp>
 
+#include "dummy.pb.h"
+
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
@@ -47,6 +49,17 @@ Result TspiceProgrammer::send_stream(ProgrammingInfo const &prog_info) {
         return r;
 
     vector<uint8_t> buffer{START_CONFIG, START_CONFIG};
+
+    Command cmd;
+    Command2 *cmd2 = cmd.mutable_cmd2();
+    (*cmd2->mutable_cmd_name()).append("Hello command world!");
+
+    std::string str;
+    bool good = cmd.SerializeToString(&str);
+    if (!good) {
+        throw new std::runtime_error("AHHHH");
+    }
+    r = serial->send(asio::buffer(str.c_str(), str.length()));
 
     // Send 2 start bytes
     r = serial->send(asio::buffer(buffer));

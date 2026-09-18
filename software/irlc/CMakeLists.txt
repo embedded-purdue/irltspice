@@ -11,9 +11,16 @@ project(IrlCompiler LANGUAGES CXX)
 # Variables
 # =========
 
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set( CMAKE_CXX_STANDARD 20 )
+set( CMAKE_CXX_STANDARD_REQUIRED ON )
+set( CMAKE_EXPORT_COMPILE_COMMANDS ON )
+
+set( IRLC_DIR ${CMAKE_CURRENT_SOURCE_DIR} )
+set( IRLTSPICE_DIR ${IRLC_DIR}/../.. )
+set( PROTO_DIR ${IRLTSPICE_DIR}/proto )
+set( GEN_PROTO_DIR ${CMAKE_CURRENT_BINARY_DIR}/gen_proto )
+set( GEN_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/gen_include )
+set( GEN_PROTOBUF_SRC_DIR ${GEN_INCLUDE_DIR}/protobuf )
 
 # ============
 # Dependencies
@@ -38,40 +45,80 @@ CPMAddPackage(
     URL_HASH SHA256=aca59f889f0f32028ad88ba6764582b63c916ce5f77b31289ad19421a96c555f
 )
 
+# Protoc
+# Must be installed via system package manager.
+# This just locates it
+find_package(Protobuf 36.1.0 CONFIG REQUIRED)
+
 # =======
 # Targets
 # =======
+
+# Preprocess protobufs
+set(PROTOS
+    ${PROTO_DIR}/dummy.proto
+)
+set(PROCESSED_PROTOS "")
+
+make_directory(${GEN_PROTO_DIR})
+foreach(PROTO ${PROTOS})
+    get_filename_component(PROTO_NAME ${PROTO} NAME)
+    set(OUTPUT_PROTO "${GEN_PROTO_DIR}/${PROTO_NAME}")
+    
+    add_custom_command(
+        OUTPUT "${OUTPUT_PROTO}"
+        COMMAND sed [[s/\/\*ifnpb\*\/.*\/\*endif\*\///]] "${PROTO}" > "${OUTPUT_PROTO}"
+        DEPENDS "${PROTO}" "${GEN_PROTO_DIR}"
+        COMMENT "Preprocessing ${PROTO_NAME} with sed"
+        VERBATIM
+    )
+    
+    list(APPEND PROCESSED_PROTOS "${OUTPUT_PROTO}")
+endforeach()
 
 # Lib (separated for testing and such)
 add_library(libirlc) 
 target_sources(libirlc 
     PRIVATE 
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/core/compiler.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/core/route.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/core/parse_spice.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/core/parse_eechema.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/core/verify.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/core/debug.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/core/board_info.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/core/numbers.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/core/emit.cpp
+        ${IRLC_DIR}/src/core/compiler.cpp
+        ${IRLC_DIR}/src/core/route.cpp
+        ${IRLC_DIR}/src/core/parse_spice.cpp
+        ${IRLC_DIR}/src/core/parse_eechema.cpp
+        ${IRLC_DIR}/src/core/verify.cpp
+        ${IRLC_DIR}/src/core/debug.cpp
+        ${IRLC_DIR}/src/core/board_info.cpp
+        ${IRLC_DIR}/src/core/numbers.cpp
+        ${IRLC_DIR}/src/core/emit.cpp
 )
 target_include_directories(libirlc 
     PUBLIC 
-        ${CMAKE_CURRENT_SOURCE_DIR}/include/
+        ${IRLC_DIR}/include/
+    PRIVATE
+        ${GEN_PROTOBUF_SRC_DIR}
 )
 target_link_libraries(libirlc 
     PRIVATE 
         Boost::graph
         Boost::asio
         Boost::outcome
+        protobuf::libprotobuf
 )
+
+make_directory(${GEN_PROTOBUF_SRC_DIR})
+protobuf_generate(
+    TARGET libirlc
+    LANGUAGE cpp
+    PROTOS ${PROCESSED_PROTOS}
+    IMPORT_DIRS ${GEN_PROTO_DIR}
+    PROTOC_OUT_DIR ${GEN_PROTOBUF_SRC_DIR}
+)
+
 
 # Actual compiler
 add_executable(irlc)
 target_sources(irlc 
     PRIVATE 
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp
+        ${IRLC_DIR}/src/main.cpp
 )
 target_link_libraries(irlc 
     PRIVATE 

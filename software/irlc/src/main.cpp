@@ -95,7 +95,7 @@ int main(int argc, char *argv[]) {
 
 IrlCompilerOptions build_compiler_options(std::map<std::string, po::variable_value> &vm) {
 
-    // #define FLAG_OPT(LONG_N, SHORT_N, MSG, CATEGORY) \
+    // #define FLsdfjslkdfjlsdjflks∆lkjdsAG_OPT(LONG_N, SHORT_N, MSG, CATEGORY) \
     //     std::cout << QUOTE(LONG_N) << " - count: " << vm.count(flagify(QUOTE(LONG_N)).c_str()) <<
     //     "\n";
     // #define TYPED_OPT(LONG_N, SHORT_N, TYPE, MSG, CATEGORY) \
