@@ -60,12 +60,6 @@ jobs:
           echo "exe-suffix=" >> "$GITHUB_OUTPUT"
         fi
 
-    # Get protobuf
-    - name: Install Protoc
-      uses: arduino/setup-protoc@v3
-      with:
-        version: "36.1"
-
     - name: Set CPM dir
       shell: bash
       run: echo "CPM_SOURCE_CACHE=$HOME/cpm-cache" >> $GITHUB_ENV

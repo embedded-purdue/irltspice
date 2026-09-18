@@ -45,10 +45,19 @@ CPMAddPackage(
     URL_HASH SHA256=aca59f889f0f32028ad88ba6764582b63c916ce5f77b31289ad19421a96c555f
 )
 
-# Protoc
-# Must be installed via system package manager.
-# This just locates it
-find_package(Protobuf 36.1.0 CONFIG REQUIRED)
+# Protoc/protobuf
+CPMAddPackage(
+    NAME Protobuf
+    VERSION 36.2.0
+    URL https://github.com/protocolbuffers/protobuf/releases/download/v36.2/protobuf-36.2.tar.gz
+    URL_HASH SHA256=3d9642a662d10e68ebae5e53f14dcce5105684212d5078f8e0d47d1ab3ae6b64
+    OPTIONS
+        "protobuf_BUILD_TESTS OFF"
+        "protobuf_BUILD_EXAMPLES OFF"
+        "protobuf_BUILD_CONFORMANCE OFF"
+        "protobuf_BUILD_SHARED_LIBS OFF"
+)
+include("${protobuf_BINARY_DIR}/cmake/protobuf/protobuf-generate.cmake")
 
 # =======
 # Targets
