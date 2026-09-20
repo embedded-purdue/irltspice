@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+message Empty {}
+
+message TopologyRequest {}
+
+message DaughterboardInfo {
+    // unique id
+    // firmware version
+    
+    oneof info {
+        // type-specific info
+        Empty dummy_daughterboard_type = 1; // TODO: remove
+    }
+}
+
+message MotherboardTopology {
+    // unique id
+    // hardware revision
+    // firmware version
+    
+    message NullableDaughterboardInfo {
+        oneof daughterboard {
+            Empty empty = 1;
+            DaughterboardInfo daughterboard_info = 2;
+        }
+    }
+    
+    repeated NullableDaughterboardInfo daughterboards = 1;
+}
+
+message TopologyResponse {
+    repeated MotherboardTopology motherboards = 1;
+}
+
+message DummyCommand {
+    // Next ID: 2. Last added: dummy_data = 1
+    int32 dummy_data = 1;
+}
+
+message Command {
+    // Next ID: 3. Last added: topology_request = 2
+    oneof payload {
+        TopologyRequest topology_request = 1;  
+        DummyCommand dummy_command = 2;
+    }
+}
