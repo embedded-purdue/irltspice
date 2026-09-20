@@ -87,6 +87,7 @@ endforeach()
 
 # Lib (separated for testing and such)
 add_library(libirlc) 
+set_target_properties(libirlc PROPERTIES OUTPUT_NAME irlc)
 target_sources(libirlc 
     PRIVATE 
         ${IRLC_DIR}/src/core/compiler.cpp
