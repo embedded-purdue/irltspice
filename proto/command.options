@@ -1,0 +1,3 @@
+MotherboardTopology.daughterboards max_count:4 fixed_count:true
+
+TopologyResponse.motherboards max_count:16

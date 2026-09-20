@@ -6,7 +6,8 @@
 int main(void) {
 
   // Example protobuf struct. Type defined in proto/command.proto
-  Command command = {.command_type = CommandType_TOPOLOGY_REQUEST};
+  Command command = {.which_payload = Command_dummy_command_tag,
+                     .payload.dummy_command = {.dummy_data = 5}};
   (void)command;
 
   // Setup pin 25 as gpio
