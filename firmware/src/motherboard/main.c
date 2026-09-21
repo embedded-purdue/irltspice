@@ -6,9 +6,9 @@
 int main(void) {
 
   // Example protobuf struct. Type defined in proto/command.proto
-  Command command = {.which_payload = Command_dummy_command_tag,
-                     .payload.dummy_command = {.dummy_data = 5}};
-  (void)command;
+  MotherResponse response = {.which_data = MotherResponse_stop_tag,
+                             .data.stop = {.complete_count = 5}};
+  (void)response;
 
   // Setup pin 25 as gpio
   gpio_init(25);

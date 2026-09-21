@@ -9,24 +9,22 @@ message DiodeDaughterboard {}
 message BasicDaughterboard {}
 
 message DaughterboardInfo {
-    uint64 unique_id = 1;
+    fixed64 unique_id = 1;
 
-    uint16 firm_version_major = 2;
-    uint8  firm_version_minor = 3;
-    uint8  firm_version_patch = 4;
+    // These will be < 32 bits, protobuf uses varint encoding.
+    uint32 firm_version_major = 2; // 16 bit
+    uint32 firm_version_minor = 3; // 8 bit
+    uint32 firm_version_patch = 4; // 8 bit
     
     oneof info {
         // type-specific info
-        TestingDaughterboard test_daughter = 1; // TODO: remove
-        BasicDaughterboard basic_daughter = 2; // TODO: remove
-        DiodeDaughterboard diode_daughter = 3; // TODO: remove
+        TestingDaughterboard test_daughter = 5;
+        BasicDaughterboard basic_daughter = 6;
+        DiodeDaughterboard diode_daughter = 7;
     }
 }
 
 message MotherboardTopology {
-    // hardware revision
-    // firmware version
-    
     message NullableDaughterboardInfo {
         oneof daughterboard {
             Empty empty = 1;
@@ -34,16 +32,18 @@ message MotherboardTopology {
         }
     }
 
-    uint64 unique_id = 1;
+    fixed64 unique_id = 1;
 
-    uint16 hardware_revision = 2;
+    uint32 hardware_revision = 2; // 16 bit
 
-    uint16 firm_version_major = 3;
-    uint8  firm_version_minor = 4;
-    uint8  firm_version_patch = 5;
+    uint32 firm_version_major = 3; // 16 bit
+    uint32  firm_version_minor = 4; // 8 bit
+    uint32  firm_version_patch = 5; // 8 bit
     
     repeated NullableDaughterboardInfo daughterboards = 6;
 }
+
+message TopologyRequest {}
 
 message TopologyResponse {
     repeated MotherboardTopology motherboards = 1;
@@ -54,9 +54,9 @@ message TopologyResponse {
 // ----------
 
 message ProgramXbar {
-    uint8 crossbar_id = 1;
-    uint8 row = 2;
-    uint8 column = 3;
+    uint32 crossbar_id = 1;
+    uint32 row = 2;
+    uint32 column = 3;
 }
 
 message ProgrammingPayload {
@@ -67,8 +67,8 @@ message ProgrammingPayload {
 
 message ProgrammingCommand {
     // address
-    uint8 motherboard_id = 1;
-    uint8 daughterboard_id = 2;
+    uint32 motherboard_id = 1; // 8 bit
+    uint32 daughterboard_id = 2; // 8 bit
 
     ProgrammingPayload payload = 3;
 }
@@ -80,6 +80,7 @@ message StopProgrammingResponse {
     uint32 complete_count = 1;
 }
 
+// A command a daughterboard will receive from its mother
 message DaughterCommand {
     oneof cmd {
         TopologyRequest topo = 1;
@@ -88,16 +89,16 @@ message DaughterCommand {
     }
 }
 
-message DaugherResponse {
+// A response a daughterboard will send to its mother
+message DaughterResponse {
     oneof data {
         DaughterboardInfo info = 1;
         StopProgrammingResponse stop = 2;
     }
 }
 
-// A commond the motherboard will receive from host/grandmother
+// A command a motherboard will receive from host/grandmother
 message MotherCommand {
-    // Next ID: 3. Last added: topology_request = 2
     oneof cmd {
         TopologyRequest topology_request = 1;  
         ProgrammingCommand dummy_command = 2;
@@ -105,6 +106,7 @@ message MotherCommand {
     }
 }
 
+// A response a motherboard will send to host/grandmother
 message MotherResponse {
     oneof data {
         MotherboardTopology info = 1;
