@@ -2,20 +2,28 @@ syntax = "proto3";
 
 message Empty {}
 
-message TopologyRequest {}
+message TestingDaughterboard {}
+
+message DiodeDaughterboard {}
+
+message BasicDaughterboard {}
 
 message DaughterboardInfo {
-    // unique id
-    // firmware version
+    uint64 unique_id = 1;
+
+    uint16 firm_version_major = 2;
+    uint8  firm_version_minor = 3;
+    uint8  firm_version_patch = 4;
     
     oneof info {
         // type-specific info
-        Empty dummy_daughterboard_type = 1; // TODO: remove
+        TestingDaughterboard test_daughter = 1; // TODO: remove
+        BasicDaughterboard basic_daughter = 2; // TODO: remove
+        DiodeDaughterboard diode_daughter = 3; // TODO: remove
     }
 }
 
 message MotherboardTopology {
-    // unique id
     // hardware revision
     // firmware version
     
@@ -25,23 +33,81 @@ message MotherboardTopology {
             DaughterboardInfo daughterboard_info = 2;
         }
     }
+
+    uint64 unique_id = 1;
+
+    uint16 hardware_revision = 2;
+
+    uint16 firm_version_major = 3;
+    uint8  firm_version_minor = 4;
+    uint8  firm_version_patch = 5;
     
-    repeated NullableDaughterboardInfo daughterboards = 1;
+    repeated NullableDaughterboardInfo daughterboards = 6;
 }
 
 message TopologyResponse {
     repeated MotherboardTopology motherboards = 1;
 }
 
-message DummyCommand {
-    // Next ID: 2. Last added: dummy_data = 1
-    int32 dummy_data = 1;
+// ----------
+//  Commands
+// ----------
+
+message ProgramXbar {
+    uint8 crossbar_id = 1;
+    uint8 row = 2;
+    uint8 column = 3;
 }
 
-message Command {
+message ProgrammingPayload {
+    oneof data {
+        ProgramXbar xbar = 1;
+    }
+}
+
+message ProgrammingCommand {
+    // address
+    uint8 motherboard_id = 1;
+    uint8 daughterboard_id = 2;
+
+    ProgrammingPayload payload = 3;
+}
+
+message StopProgramming {
+}
+
+message StopProgrammingResponse {
+    uint32 complete_count = 1;
+}
+
+message DaughterCommand {
+    oneof cmd {
+        TopologyRequest topo = 1;
+        ProgrammingPayload prog = 2;
+        StopProgramming stop = 3;
+    }
+}
+
+message DaugherResponse {
+    oneof data {
+        DaughterboardInfo info = 1;
+        StopProgrammingResponse stop = 2;
+    }
+}
+
+// A commond the motherboard will receive from host/grandmother
+message MotherCommand {
     // Next ID: 3. Last added: topology_request = 2
-    oneof payload {
+    oneof cmd {
         TopologyRequest topology_request = 1;  
-        DummyCommand dummy_command = 2;
+        ProgrammingCommand dummy_command = 2;
+        StopProgramming stop = 3;
+    }
+}
+
+message MotherResponse {
+    oneof data {
+        MotherboardTopology info = 1;
+        StopProgrammingResponse stop = 2;
     }
 }
