@@ -65,7 +65,7 @@ include("${protobuf_BINARY_DIR}/cmake/protobuf/protobuf-generate.cmake")
 
 # Preprocess protobufs
 set(PROTOS
-    ${PROTO_DIR}/dummy.proto
+    ${PROTO_DIR}/command.proto
 )
 set(PROCESSED_PROTOS "")
 

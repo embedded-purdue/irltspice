@@ -10,7 +10,7 @@
 
 #include <boost/asio.hpp>
 
-#include "dummy.pb.h"
+#include "command.pb.h"
 
 #include <chrono>
 #include <cstdint>
@@ -19,7 +19,6 @@
 #include <iostream>
 #include <optional>
 #include <ostream>
-#include <set>
 #include <sstream>
 #include <stdexcept>
 #include <unordered_set>
@@ -50,9 +49,8 @@ Result TspiceProgrammer::send_stream(ProgrammingInfo const &prog_info) {
 
     vector<uint8_t> buffer{START_CONFIG, START_CONFIG};
 
-    Command cmd;
-    Command2 *cmd2 = cmd.mutable_cmd2();
-    (*cmd2->mutable_cmd_name()).append("Hello command world!");
+    MotherCommand cmd;
+    StopProgramming *toporeq = cmd.mutable_stop();
 
     std::string str;
     bool good = cmd.SerializeToString(&str);

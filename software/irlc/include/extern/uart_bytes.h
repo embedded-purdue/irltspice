@@ -1,1 +1,1 @@
-../../../../firmware/include/uart_bytes.h
+../../../../firmware/include/legacy/uart_bytes.h
