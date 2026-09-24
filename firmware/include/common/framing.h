@@ -14,6 +14,13 @@
 
 // Tools for parsing our framing format for all internode comms
 
+// FRAMING FORMAT
+// - Start byte (0xAB)
+// - Length (2 bytes)
+// - Length again (2 bytes), check match
+// - Payload (n bytes)
+// - crc16 (2 bytes), 0 for placeholder value for now
+
 #define START_BYTE 0xAB
 
 typedef enum {
