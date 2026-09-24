@@ -9,6 +9,10 @@
 #include <pb_encode.h>
 #endif
 
+// ================================================================
+// Parsing Logic
+// ================================================================
+
 void frame_parser_init(FrameParser *fp, RingBuffer *rb) {
     assert(fp != NULL);
     assert(rb != NULL);
@@ -110,6 +114,10 @@ bool frame_parser_parse(FrameParser *fp) {
     return false;
 }
 
+// ================================================================
+// Framing Logic
+// ================================================================
+
 static void _frame_header(RingBuffer *rb, size_t len) {
     ring_buffer_push(rb, START_BYTE);
     ring_buffer_push(rb, (len & 0xFF00) >> 8);
@@ -132,12 +140,13 @@ void frame_payload(RingBuffer *rb, const uint8_t *buf, size_t len) {
     _frame_crc(rb, 0);
 }
 
+// Nanopb specific functions
 #ifndef __cplusplus
 
-// Nanopb specific functions
 static bool _ring_buffer_pb_pop_callback(pb_istream_t *stream, pb_byte_t *buf, size_t count) {
     RingBuffer *rb = (RingBuffer *)stream->state;
 
+    // Buffer of NULL means nanopb is ignoring these bytes
     if (buf == NULL) {
         for (size_t i = 0; i < count; i++) {
             ring_buffer_pop(rb);

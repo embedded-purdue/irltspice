@@ -13,15 +13,6 @@ static uint8_t *_get_wrapped_addr(RingBuffer *rb, uintptr_t addr) {
     return (uint8_t *)((addr & mask) | ((uintptr_t)rb->buffer & ~mask));
 }
 
-static uint8_t _log_2(uint32_t x) {
-    uint8_t n = 0;
-    while (x > 1) {
-        x >>= 1;
-        ++n;
-    }
-    return n;
-}
-
 // ================================================================
 // Actually Useful Baloney
 // ================================================================
