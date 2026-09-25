@@ -7,7 +7,7 @@
 #include "common/framing.h"
 #include "common/ring_buffer.h"
 
-#define COMMS_DMA_BUFFER_SIZE_BITS (16)
+#define COMMS_DMA_BUFFER_SIZE_BITS (15)
 #define COMMS_DMA_BUFFER_SIZE (1 << COMMS_DMA_BUFFER_SIZE_BITS)
 
 __attribute__((
