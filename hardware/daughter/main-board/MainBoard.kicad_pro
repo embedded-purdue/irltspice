@@ -743,30 +743,6 @@
     [
       "5dd933ff-bc57-4741-8957-85d8c6e75130",
       "Root"
-    ],
-    [
-      "fe3808c0-aea1-40d0-81b1-a52454b6fcf3",
-      "STD"
-    ],
-    [
-      "f2ad4040-6970-4225-8b08-e82169e71be0",
-      "STD1"
-    ],
-    [
-      "1dabda79-d399-4710-9868-c914be4636dc",
-      "STD2"
-    ],
-    [
-      "976c758a-cbac-4a5f-b407-9f4ceba4ebf5",
-      "STD3"
-    ],
-    [
-      "534f316e-b737-411c-8d6f-20e6ab703659",
-      "Power Supply"
-    ],
-    [
-      "72af25e1-7cdc-412a-8304-78174a178e92",
-      "MicroController"
     ]
   ],
   "text_variables": {}
