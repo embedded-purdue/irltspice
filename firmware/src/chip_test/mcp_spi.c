@@ -1,6 +1,10 @@
 #include "hardware/spi.h"
 #include "hardware/gpio.h"
 
+// THIS IS FOR mcp4362
+
+int address_select(int pot);
+
 void init_mcp_spi(int sck, int sda, int sdo, int cs, int baudrate, spi_inst_t* spi) {
     gpio_set_function(sck, 1);
     gpio_set_function(sda, 1);
@@ -45,7 +49,7 @@ void reset_resistance(spi_inst_t* spi, int pot){
     spi_write16_blocking(spi, &src, 1);
 }
 
-int address_select(int pot){
+int address_select(int pot) {
     int address = 0;
     if (pot == 1){
         address = 1;
