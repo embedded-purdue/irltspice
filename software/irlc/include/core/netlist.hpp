@@ -154,7 +154,7 @@ typedef RawNetlist::edge_descriptor RawEdge;
 // Bullshit for listing parseable components
 // =========================================
 // I really should not have done this, but I realllly wanted it comptime w/o manually naming the
-// arrays Static members of constexpr lambdas being c++23 sucks :(
+// arrays. Static members of constexpr lambdas being c++23 sucks :(
 
 #define COMPONENT(KIND, NAME, NUMERIC, PFXS, VALS, PINS)                                           \
     static constexpr auto _##KIND##_pfxs = PFXS;                                                   \

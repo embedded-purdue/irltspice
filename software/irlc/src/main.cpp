@@ -74,9 +74,15 @@ int main(int argc, char *argv[]) {
     positional.add(flagify(CHAR_ARR(EX_AND_QUOTE(INFILE_OPT))).data(), -1);
 
     po::variables_map vm;
-    po::store(
-        po::command_line_parser(argc, argv).options(cmdline_desc).positional(positional).run(), vm);
-    po::store(po::parse_command_line(argc, argv, cmdline_desc), vm);
+    try {
+        po::store(
+            po::command_line_parser(argc, argv).options(cmdline_desc).positional(positional).run(),
+            vm);
+        po::store(po::parse_command_line(argc, argv, cmdline_desc), vm);
+    } catch (po::error &e) {
+        std::cout << "[ERROR] - " << e.what() << "\n";
+        return -1;
+    }
     po::notify(vm);
 
     IrlCompilerOptions opts = build_compiler_options(vm);
@@ -94,16 +100,6 @@ int main(int argc, char *argv[]) {
 }
 
 IrlCompilerOptions build_compiler_options(std::map<std::string, po::variable_value> &vm) {
-
-    // #define FLsdfjslkdfjlsdjflks∆lkjdsAG_OPT(LONG_N, SHORT_N, MSG, CATEGORY) \
-    //     std::cout << QUOTE(LONG_N) << " - count: " << vm.count(flagify(QUOTE(LONG_N)).c_str()) <<
-    //     "\n";
-    // #define TYPED_OPT(LONG_N, SHORT_N, TYPE, MSG, CATEGORY) \
-    //     std::cout << QUOTE(LONG_N) << " - count: " << vm.count(flagify(QUOTE(LONG_N)).c_str()) <<
-    //     "\n"; COMPILER_OPTIONS
-    // #undef FLAG_OPT
-    // #undef TYPED_OPT
-
 #define FLAG_OPT(LONG_N, SHORT_N, MSG, CATEGORY)                                                   \
     .LONG_N = vm.contains(flagify(CHAR_ARR(QUOTE(LONG_N))).data()),
 #define TYPED_OPT(LONG_N, SHORT_N, TYPE, DEFAULT, MSG, CATEGORY)                                   \

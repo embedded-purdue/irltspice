@@ -93,7 +93,7 @@ StdCell const &AssignedNetlist::get_cell(RawVert v) {
 //
 // See boost::breadth_first_visit in for implementation
 //
-// The concept/intercae this needs to conform to
+// The concept/interface this needs to conform to
 // https://www.boost.org/doc/libs/latest/libs/graph/doc/BFSVisitor.html
 // Described here
 // ==============

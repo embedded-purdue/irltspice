@@ -18,7 +18,6 @@ set( CMAKE_EXPORT_COMPILE_COMMANDS ON )
 set( IRLC_DIR ${CMAKE_CURRENT_SOURCE_DIR} )
 set( IRLTSPICE_DIR ${IRLC_DIR}/../.. )
 set( PROTO_DIR ${IRLTSPICE_DIR}/proto )
-set( GEN_PROTO_DIR ${CMAKE_CURRENT_BINARY_DIR}/gen_proto )
 set( GEN_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/gen_include )
 set( GEN_PROTOBUF_SRC_DIR ${GEN_INCLUDE_DIR}/protobuf )
 
@@ -67,23 +66,6 @@ include("${protobuf_BINARY_DIR}/cmake/protobuf/protobuf-generate.cmake")
 set(PROTOS
     ${PROTO_DIR}/command.proto
 )
-set(PROCESSED_PROTOS "")
-
-make_directory(${GEN_PROTO_DIR})
-foreach(PROTO ${PROTOS})
-    get_filename_component(PROTO_NAME ${PROTO} NAME)
-    set(OUTPUT_PROTO "${GEN_PROTO_DIR}/${PROTO_NAME}")
-    
-    add_custom_command(
-        OUTPUT "${OUTPUT_PROTO}"
-        COMMAND sed [[s/\/\*ifnpb\*\/.*\/\*endif\*\///]] "${PROTO}" > "${OUTPUT_PROTO}"
-        DEPENDS "${PROTO}" "${GEN_PROTO_DIR}"
-        COMMENT "Preprocessing ${PROTO_NAME} with sed"
-        VERBATIM
-    )
-    
-    list(APPEND PROCESSED_PROTOS "${OUTPUT_PROTO}")
-endforeach()
 
 # Lib (separated for testing and such)
 add_library(libirlc) 
@@ -118,8 +100,8 @@ make_directory(${GEN_PROTOBUF_SRC_DIR})
 protobuf_generate(
     TARGET libirlc
     LANGUAGE cpp
-    PROTOS ${PROCESSED_PROTOS}
-    IMPORT_DIRS ${GEN_PROTO_DIR}
+    PROTOS ${PROTOS}
+    IMPORT_DIRS ${PROTO_DIR}
     PROTOC_OUT_DIR ${GEN_PROTOBUF_SRC_DIR}
 )
 
