@@ -60,5 +60,5 @@ int16_t read_reg(spi_inst_t* spi){
     // spi_write16_blocking(spi, &src, 1); 
     int16_t dst = 0;
     spi_read16_blocking(spi, src, &dst, 1);
-    return dst & 0xff
+    return dst & 0xff;
 }
