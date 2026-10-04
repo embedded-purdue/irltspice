@@ -869,15 +869,15 @@
 		(in_bom yes)
 		(on_board yes)
 		(property "Reference" "U"
-			(at 0.508 0.762 0)
+			(at 6.096 2.794 0)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
 			)
 		)
-		(property "Value" ""
-			(at 0 0 0)
+		(property "Value" "ADG1414BRUZ"
+			(at 6.604 1.016 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -902,7 +902,7 @@
 				(hide yes)
 			)
 		)
-		(property "Description" ""
+		(property "Description" "ADG1414BRUZ analog SPST switch"
 			(at 0 0 0)
 			(effects
 				(font
