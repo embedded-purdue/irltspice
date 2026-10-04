@@ -1,20 +1,22 @@
 #include "hardware/spi.h"
 #include "hardware/gpio.h"
+#include "mcp_spi.h"
 
 // THIS IS FOR mcp4362
 
 int address_select(int pot);
 
-void init_mcp_spi(int sck, int sda, int sdo, int cs, int baudrate, spi_inst_t* spi) {
+void init_mcp_spi(int sck, int sda, int sdo, int cs, int baudrate, spi_inst_t* spi, MCP_SPI* mcp) {
     gpio_set_function(sck, 1);
     gpio_set_function(sda, 1);
     gpio_set_function(cs, 1);
     gpio_set_function(sdo, 1);
     spi_init(spi, baudrate);
     spi_set_format(spi, 16, 0, 0, SPI_MSB_FIRST);
+    mcp->spi = spi;
 }
 
-void set_resistance(int ohms, spi_inst_t* spi, int pot){
+void set_resistance(int ohms, MCP_SPI* mcp, int pot){
 /*
 16 bits
 15:12 - address for which pot to change
@@ -39,14 +41,14 @@ void set_resistance(int ohms, spi_inst_t* spi, int pot){
     src |= address << 12;
     src |= step;
 
-    spi_write16_blocking(spi, &src, 1);
+    spi_write16_blocking(mcp->spi, &src, 1);
 }
 
-void reset_resistance(spi_inst_t* spi, int pot){
+void reset_resistance(MCP_SPI* mcp, int pot){
     int address = address_select(pot);
     uint16_t src = 0;
     src |= address;
-    spi_write16_blocking(spi, &src, 1);
+    spi_write16_blocking(mcp->spi, &src, 1);
 }
 
 int address_select(int pot) {
