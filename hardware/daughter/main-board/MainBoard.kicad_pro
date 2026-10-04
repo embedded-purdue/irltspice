@@ -743,6 +743,30 @@
     [
       "5dd933ff-bc57-4741-8957-85d8c6e75130",
       "Root"
+    ],
+    [
+      "b9f6476c-14be-4a4c-ba38-bdd7c28a27bb",
+      "Power"
+    ],
+    [
+      "47e05264-ac3b-407f-b197-d26aa9ebf22e",
+      "MicroControls"
+    ],
+    [
+      "e5345f99-e4f8-4d51-bf1d-8f5434d5ca69",
+      "Cell1"
+    ],
+    [
+      "aecae6ce-3814-428d-ac18-b526c6020136",
+      "Cell2"
+    ],
+    [
+      "392d375a-cab9-4d74-bacf-036726d821c6",
+      "Cell3"
+    ],
+    [
+      "f888d59a-5aa7-4199-a90d-1ec7a0d6cb2d",
+      "Cell4"
     ]
   ],
   "text_variables": {}
