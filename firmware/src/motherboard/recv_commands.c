@@ -45,20 +45,11 @@ void recv_command_init() {
 
 bool recv_command(MotherCommand *command) {
     // Update ring buffer state to reflect what DMA has done
-    uintptr_t head = (uintptr_t)g_rb.head;
-    uintptr_t tail = dma_hw->ch[g_dma_ch].write_addr;
+    bool res = ring_buffer_update_tail(&g_rb, (uint8_t *)dma_hw->ch[g_dma_ch].write_addr);
 
-    uint32_t fill = 0;
-    if (tail > head) {
-        fill = tail - head;
-    } else {
-        fill = ring_buffer_get_size(&g_rb) - (head - tail);
-    }
-
-    if (fill < g_rb.fill) {
+    if (!res) {
         // overflow detected
     }
-    g_rb.fill = fill;
 
     // Parse buffer for proto
     return frame_parser_parse_for_proto(&g_fp, MotherCommand_fields, command);

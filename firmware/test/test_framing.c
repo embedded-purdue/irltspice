@@ -77,7 +77,9 @@ void test_parse_proto_manual() {
 
     // Parse frame
     TEST_ASSERT_TRUE(frame_parser_parse(&parser));
-    TEST_ASSERT_EQUAL(frame_parser_get_data_length(&parser), len);
+
+    // Length - header length = data length
+    TEST_ASSERT_EQUAL(frame_parser_get_data_length(&parser) + 7, len);
 
     // Decode proto
     pb_istream_t istream = pb_istream_from_buffer(frame_parser_get_data_start(&parser),

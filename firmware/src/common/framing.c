@@ -226,7 +226,8 @@ uint16_t frame_proto(RingBuffer *rb, const pb_msgdesc_t *fields, const void *pro
     rb->fill += len;
     _frame_crc(rb, 0);
 
-    return len;
+    // header length + payload length + crc length
+    return 5 + len + 2;
 }
 
 #endif

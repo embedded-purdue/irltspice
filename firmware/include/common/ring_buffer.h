@@ -2,6 +2,7 @@
 #define __COMMON_RING_BUFFER_H__
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -17,6 +18,7 @@ typedef struct {
     uint32_t buffer_size;
     volatile uint8_t *head;
     uint32_t fill;
+    size_t overflow_cnt;
 } RingBuffer;
 
 void ring_buffer_init(RingBuffer *rb, volatile uint8_t *buffer, uint32_t buffer_size);
@@ -25,6 +27,8 @@ void ring_buffer_push(RingBuffer *rb, uint8_t data);
 uint8_t ring_buffer_pop(RingBuffer *rb);
 
 static inline void ring_buffer_set_head(RingBuffer *rb, uint8_t *head) { rb->head = head; }
+
+bool ring_buffer_update_tail(RingBuffer *rb, uint8_t *new_tail);
 
 static inline bool ring_buffer_empty(RingBuffer *rb) { return rb->fill == 0; }
 
