@@ -6,8 +6,8 @@
 #include <string>
 #include <utility>
 
-#include "detail/smallvec.hpp"
-#include "detail/util.hpp"
+#include <irl/detail/smallvec.hpp>
+#include <irl/detail/util.hpp>
 
 namespace irl {
 
