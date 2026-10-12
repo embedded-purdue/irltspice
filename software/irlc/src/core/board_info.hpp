@@ -1,7 +1,4 @@
 #pragma once
-#include "core/netlist.hpp"
-#include "core/numbers.hpp"
-#include "util/macros.hpp"
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -14,6 +11,10 @@
 #include <unordered_map>
 #include <variant>
 #include <vector>
+
+#include "core/netlist.hpp"
+#include "core/numbers.hpp"
+#include "util/macros.hpp"
 
 typedef std::variant<struct FloatingCon, struct SpecialNetCon, struct RoutableColCon,
                      struct ComponentColCon>
