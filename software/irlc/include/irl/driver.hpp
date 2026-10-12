@@ -79,7 +79,7 @@ struct ProgrammingCommand {
     std::variant<ProgramXbar> cmd;
 };
 
-// SemVer of the frimware running on a mother/daughter board
+// SemVer of the firmware running on a mother/daughter board
 struct FirmwareVersion {
     uint16_t major;
     uint8_t minor;
@@ -103,7 +103,7 @@ enum class DaughterboardKind : uint32_t {
 // Topology information about a daughterboard slot
 // Could indicate that a daughterboard is not present in this slot
 struct DaughterboardTopology {
-    // A unique id (serial number) for this sepcific board
+    // A unique id (serial number) for this specific board
     uint64_t uniqueId;
     FirmwareVersion firmwareVersion;
     DaughterboardKind kind;
@@ -111,9 +111,9 @@ struct DaughterboardTopology {
     Netlist netlist;
 };
 
-// Topology information aobut a motherboard
+// Topology information about a motherboard
 struct MotherboardTopology {
-    // A unique id (serial number) for this sepcific board
+    // A unique id (serial number) for this specific board
     uint64_t uniqueId;
     uint32_t hardwareRevision;
     FirmwareVersion firmwareVersion;
@@ -172,18 +172,18 @@ class IrlDriver {
     CommandResult<NoResponseExpected> resetTspice();
 
     // Resets the tspice and places it into programming mode.
-    // Requires a non-stale toplogy to ensure no mistakes are made.
+    // Requires a non-stale topology to ensure no mistakes are made.
     CommandResult<NoResponseExpected> beginProgramming(IrlTopology const *topo);
 
     // End programming. Places the tspice in "active" mode.
     // Returns the number of programming commands successfully completed since
     // the last beginProgramming call.
-    // Requires a non-stale toplogy to ensure no mistakes are made.
+    // Requires a non-stale topology to ensure no mistakes are made.
     CommandResult<uint32_t> endProgramming(IrlTopology const *topo);
 
     // Send a programming command to the tspice.
     // It must be in programming mode.
-    // Requires a non-stale toplogy to ensure no mistakes are made.
+    // Requires a non-stale topology to ensure no mistakes are made.
     CommandResult<NoResponseExpected> sendProgrammingCommand(IrlTopology const *topo,
                                                              ProgrammingCommand const *cmd);
 

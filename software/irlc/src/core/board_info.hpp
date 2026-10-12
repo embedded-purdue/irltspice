@@ -14,7 +14,11 @@
 
 #include "core/netlist.hpp"
 #include "core/numbers.hpp"
+#include "irl/netlist.hpp"
 #include "util/macros.hpp"
+
+using namespace irl;
+using enum irl::NetKind;
 
 typedef std::variant<struct FloatingCon, struct SpecialNetCon, struct RoutableColCon,
                      struct ComponentColCon>
@@ -75,7 +79,7 @@ typedef struct BufferOutputRowCon {
 // A row that is chained to the row of another crossbar
 typedef struct ChainedRowCon {
     // The id of the row in the root crossbar of a ChainedCrossbar
-    uint8_t sibiling;
+    uint8_t sibling;
 } ChainedRowCon;
 
 // A physical crossbar on the board and what it is connected to.
@@ -111,7 +115,7 @@ class ColConIter {
     bool operator==(ColConIter const &other) const;
     bool operator!=(ColConIter const &other) const;
 
-    // Get's the bars physical id
+    // Gets the bars physical id
     uint8_t get_bar_phys_id();
     uint8_t get_bar_col();
 
@@ -185,135 +189,129 @@ const SimpleTspiceInfo MAIN_BOARD = []() {
 #define STD_CELL(CELL_ID, FIRST_R, C1, C2, C3)                                                     \
     PhysStdCell {                                                                                  \
         .id = CELL_ID,                                                                             \
-        .crossbars =                                                                               \
-            ChainedCrossbar(/* clang-format off */ /* It hates this template idk */            \
-                std::array<PhysCrossbar,2>{   \
-                                /* clang-format on */                                              \
-                                PhysCrossbar{                                                      \
-                                    .id = CELL_##CELL_ID##_BAR_0,                                  \
-                                    .rows =                                                        \
-                                        std::vector<RowCon>{                                       \
-                                            RoutableRowCon{.parent_id = ROOT_BAR,                  \
-                                                           .parent_col = C1},                      \
-                                            RoutableRowCon{.parent_id = ROOT_BAR,                  \
-                                                           .parent_col = C2},                      \
-                                            RoutableRowCon{.parent_id = ROOT_BAR,                  \
-                                                           .parent_col = C3},                      \
-                                            BufferInputRowCon{},                                   \
-                                            SpecialNetCon{.kind = V_GND},                          \
-                                            FloatingCon{},                                         \
-                                            FloatingCon{},                                         \
-                                            FloatingCon{},                                         \
-                                        },                                                         \
-                                    .cols =                                                        \
-                                        std::vector<ColCon>{                                       \
-                                            ComponentColCon{                                       \
-                                                .kind = R, .pin_kind = PIN_R, .id = FIRST_R + 5},  \
-                                            ComponentColCon{.kind = R,                             \
-                                                            .pin_kind = PIN_R,                     \
-                                                            .id = FIRST_R + 5},                    \
-                                            ComponentColCon{.kind = R,                             \
-                                                            .pin_kind = PIN_R,                     \
-                                                            .id = FIRST_R + 6},                    \
-                                            ComponentColCon{.kind = R,                             \
-                                                            .pin_kind = PIN_R,                     \
-                                                            .id = FIRST_R + 6},                    \
-                                            ComponentColCon{.kind = CUSTOM,                        \
-                                                            .pin_kind = PIN_CUSTOM_A,              \
-                                                            .id = uniquie()},                      \
-                                            ComponentColCon{.kind = CUSTOM,                        \
-                                                            .pin_kind = PIN_CUSTOM_B,              \
-                                                            .id = prev()},                         \
-                                            ComponentColCon{.kind = DIODE,                         \
-                                                            .pin_kind = PIN_D_K,                   \
-                                                            .id = uniquie()},                      \
-                                            ComponentColCon{                                       \
-                                                .kind = DIODE, .pin_kind = PIN_D_A, .id = prev()}, \
-                                            ComponentColCon{.kind = C,                             \
-                                                            .pin_kind = PIN_C,                     \
-                                                            .id = uniquie(),                       \
-                                                            .val = 1_n},                           \
-                                            ComponentColCon{.kind = C,                             \
-                                                            .pin_kind = PIN_C,                     \
-                                                            .id = prev(),                          \
-                                                            .val = 1_n},                           \
-                                            ComponentColCon{.kind = C,                             \
-                                                            .pin_kind = PIN_C,                     \
-                                                            .id = uniquie(),                       \
-                                                            .val = 10_n},                          \
-                                            ComponentColCon{.kind = C,                             \
-                                                            .pin_kind = PIN_C,                     \
-                                                            .id = prev(),                          \
-                                                            .val = 10_n},                          \
-                                            ComponentColCon{.kind = DIODE,                         \
-                                                            .pin_kind = PIN_D_K,                   \
-                                                            .id = uniquie()},                      \
-                                            ComponentColCon{                                       \
-                                                .kind = DIODE, .pin_kind = PIN_D_A, .id = prev()}, \
-                                            ComponentColCon{.kind = C,                             \
-                                                            .pin_kind = PIN_C,                     \
-                                                            .id = uniquie(),                       \
-                                                            .val = 100_n},                         \
-                                            ComponentColCon{.kind = C,                             \
-                                                            .pin_kind = PIN_C,                     \
-                                                            .id = prev(),                          \
-                                                            .val = 100_n},                         \
-                                        },                                                         \
-                                },                                                                 \
-                                PhysCrossbar{                                                      \
-                                    .id = CELL_##CELL_ID##_BAR_1,                                  \
-                                    .rows = std::vector<RowCon>(8),                                \
-                                    .cols =                                                        \
-                                        std::vector<ColCon>{                                       \
-                                            ComponentColCon{.kind = OPAMP,                         \
-                                                            .pin_kind = PIN_OPAMP_OUT,             \
-                                                            .id = uniquie()},                      \
-                                            ComponentColCon{.kind = OPAMP,                         \
-                                                            .pin_kind = PIN_OPAMP_PLUS,            \
-                                                            .id = prev()},                         \
-                                            ComponentColCon{.kind = OPAMP,                         \
-                                                            .pin_kind = PIN_OPAMP_MINUS,           \
-                                                            .id = prev()},                         \
-                                            ComponentColCon{.kind = OPAMP,                         \
-                                                            .pin_kind = PIN_OPAMP_OUT,             \
-                                                            .id = uniquie()},                      \
-                                            ComponentColCon{.kind = OPAMP,                         \
-                                                            .pin_kind = PIN_OPAMP_MINUS,           \
-                                                            .id = prev()},                         \
-                                            ComponentColCon{.kind = OPAMP,                         \
-                                                            .pin_kind = PIN_OPAMP_PLUS,            \
-                                                            .id = prev()},                         \
-                                            ComponentColCon{                                       \
-                                                .kind = R, .pin_kind = PIN_R, .id = FIRST_R + 1},  \
-                                            ComponentColCon{                                       \
-                                                .kind = R, .pin_kind = PIN_R, .id = FIRST_R + 1},  \
-                                            ComponentColCon{                                       \
-                                                .kind = R, .pin_kind = PIN_R, .id = FIRST_R + 2},  \
-                                            ComponentColCon{                                       \
-                                                .kind = R, .pin_kind = PIN_R, .id = FIRST_R + 2},  \
-                                            ComponentColCon{                                       \
-                                                .kind = R, .pin_kind = PIN_R, .id = FIRST_R + 4},  \
-                                            ComponentColCon{                                       \
-                                                .kind = R, .pin_kind = PIN_R, .id = FIRST_R + 4},  \
+        .crossbars = ChainedCrossbar(                                                              \
+            /* clang-format off */ /* It hates this template idk */            \
+                std::array<PhysCrossbar,2>{ /* clang-format on */                                                   \
+                           PhysCrossbar{                                                           \
+                               .id = CELL_##CELL_ID##_BAR_0,                                       \
+                               .rows =                                                             \
+                                   std::vector<RowCon>{                                            \
+                                       RoutableRowCon{.parent_id = ROOT_BAR, .parent_col = C1},    \
+                                       RoutableRowCon{.parent_id = ROOT_BAR, .parent_col = C2},    \
+                                       RoutableRowCon{.parent_id = ROOT_BAR, .parent_col = C3},    \
+                                       BufferInputRowCon{},                                        \
+                                       SpecialNetCon{.kind = V_GND},                               \
+                                       FloatingCon{},                                              \
+                                       FloatingCon{},                                              \
+                                       FloatingCon{},                                              \
+                                   },                                                              \
+                               .cols =                                                             \
+                                   std::vector<ColCon>{                                            \
+                                       ComponentColCon{                                            \
+                                           .kind = R, .pin_kind = PIN_R, .id = FIRST_R + 5},       \
+                                       ComponentColCon{                                            \
+                                           .kind = R, .pin_kind = PIN_R, .id = FIRST_R + 5},       \
+                                       ComponentColCon{                                            \
+                                           .kind = R, .pin_kind = PIN_R, .id = FIRST_R + 6},       \
+                                       ComponentColCon{                                            \
+                                           .kind = R, .pin_kind = PIN_R, .id = FIRST_R + 6},       \
+                                       ComponentColCon{                                            \
+                                           .kind = CUSTOM,                                         \
+                                           .pin_kind =                                             \
+                                               PIN_CUSTOM,                                         \
+                                           .id = uniquie()},                                       \
+                                       ComponentColCon{                                            \
+                                           .kind = CUSTOM, .pin_kind = PIN_CUSTOM, .id = prev()},  \
+                                       ComponentColCon{.kind = DIODE,                              \
+                                                       .pin_kind = PIN_DIODE_K,                    \
+                                                       .id = uniquie()},                           \
+                                       ComponentColCon{                                            \
+                                           .kind = DIODE, .pin_kind = PIN_DIODE_A, .id = prev()},  \
+                                       ComponentColCon{.kind = C,                                  \
+                                                       .pin_kind = PIN_C,                          \
+                                                       .id = uniquie(),                            \
+                                                       .val = 1_n},                                \
+                                       ComponentColCon{.kind = C,                                  \
+                                                       .pin_kind = PIN_C,                          \
+                                                       .id = prev(),                               \
+                                                       .val = 1_n},                                \
+                                       ComponentColCon{.kind = C,                                  \
+                                                       .pin_kind = PIN_C,                          \
+                                                       .id = uniquie(),                            \
+                                                       .val = 10_n},                               \
+                                       ComponentColCon{.kind = C,                                  \
+                                                       .pin_kind = PIN_C,                          \
+                                                       .id = prev(),                               \
+                                                       .val = 10_n},                               \
+                                       ComponentColCon{.kind = DIODE,                              \
+                                                       .pin_kind = PIN_DIODE_K,                    \
+                                                       .id = uniquie()},                           \
+                                       ComponentColCon{                                            \
+                                           .kind = DIODE, .pin_kind = PIN_DIODE_A, .id = prev()},  \
+                                       ComponentColCon{.kind = C,                                  \
+                                                       .pin_kind = PIN_C,                          \
+                                                       .id = uniquie(),                            \
+                                                       .val = 100_n},                              \
+                                       ComponentColCon{.kind = C,                                  \
+                                                       .pin_kind = PIN_C,                          \
+                                                       .id = prev(),                               \
+                                                       .val = 100_n},                              \
+                                   },                                                              \
+                           },                                                                      \
+                           PhysCrossbar{                                                           \
+                               .id = CELL_##CELL_ID##_BAR_1,                                       \
+                               .rows = std::vector<RowCon>(8),                                     \
+                               .cols =                                                             \
+                                   std::vector<ColCon>{                                            \
+                                       ComponentColCon{.kind = OPAMP,                              \
+                                                       .pin_kind = PIN_OPAMP_OUT,                  \
+                                                       .id = uniquie()},                           \
+                                       ComponentColCon{.kind = OPAMP,                              \
+                                                       .pin_kind = PIN_OPAMP_PLUS,                 \
+                                                       .id = prev()},                              \
+                                       ComponentColCon{.kind = OPAMP,                              \
+                                                       .pin_kind = PIN_OPAMP_MINUS,                \
+                                                       .id = prev()},                              \
+                                       ComponentColCon{.kind = OPAMP,                              \
+                                                       .pin_kind = PIN_OPAMP_OUT,                  \
+                                                       .id = uniquie()},                           \
+                                       ComponentColCon{.kind = OPAMP,                              \
+                                                       .pin_kind = PIN_OPAMP_MINUS,                \
+                                                       .id = prev()},                              \
+                                       ComponentColCon{.kind = OPAMP,                              \
+                                                       .pin_kind = PIN_OPAMP_PLUS,                 \
+                                                       .id = prev()},                              \
+                                       ComponentColCon{                                            \
+                                           .kind = R, .pin_kind = PIN_R, .id = FIRST_R + 1},       \
+                                       ComponentColCon{                                            \
+                                           .kind = R, .pin_kind = PIN_R, .id = FIRST_R + 1},       \
+                                       ComponentColCon{                                            \
+                                           .kind = R, .pin_kind = PIN_R, .id = FIRST_R + 2},       \
+                                       ComponentColCon{                                            \
+                                           .kind = R, .pin_kind = PIN_R, .id = FIRST_R + 2},       \
+                                       ComponentColCon{                                            \
+                                           .kind = R, .pin_kind = PIN_R, .id = FIRST_R + 4},       \
+                                       ComponentColCon{                                            \
+                                           .kind = R, .pin_kind = PIN_R, .id = FIRST_R + 4},       \
                                                                                                    \
-                                            ComponentColCon{.kind = C,                             \
-                                                            .pin_kind = PIN_C,                     \
-                                                            .id = uniquie(),                       \
-                                                            .val = 1_u},                           \
-                                            ComponentColCon{.kind = C,                             \
-                                                            .pin_kind = PIN_C,                     \
-                                                            .id = prev(),                          \
-                                                            .val = 1_u},                           \
-                                            ComponentColCon{                                       \
-                                                .kind = R, .pin_kind = PIN_R, .id = FIRST_R + 3},  \
-                                            ComponentColCon{                                       \
-                                                .kind = R, .pin_kind = PIN_R, .id = FIRST_R + 3},  \
-                                        },                                                         \
-                                }},                                                                \
-                            std::array<std::array<std::pair<size_t, size_t>, 8>, 1>{std::array{    \
-                                std::pair(0_z, 4_z), std::pair(1_z, 5_z), std::pair(2_z, 6_z),     \
-                                std::pair(3_z, 7_z), std::pair(4_z, 0_z), std::pair(5_z, 1_z),     \
-                                std::pair(6_z, 2_z), std::pair(7_z, 3_z)}})                        \
+                                       ComponentColCon{.kind = C,                                  \
+                                                       .pin_kind = PIN_C,                          \
+                                                       .id = uniquie(),                            \
+                                                       .val = 1_u},                                \
+                                       ComponentColCon{.kind = C,                                  \
+                                                       .pin_kind = PIN_C,                          \
+                                                       .id = prev(),                               \
+                                                       .val = 1_u},                                \
+                                       ComponentColCon{                                            \
+                                           .kind = R, .pin_kind = PIN_R, .id = FIRST_R + 3},       \
+                                       ComponentColCon{                                            \
+                                           .kind = R, .pin_kind = PIN_R, .id = FIRST_R + 3},       \
+                                   },                                                              \
+                           }},                                                                     \
+            std::array<std::array<std::pair<size_t, size_t>, 8>, 1>{                               \
+                std::array{std::pair(0_z, 4_z), std::pair(1_z, 5_z), std::pair(2_z, 6_z),          \
+                           std::pair(3_z, 7_z), std::pair(4_z, 0_z), std::pair(5_z, 1_z),          \
+                           std::pair(6_z, 2_z), std::pair(7_z, 3_z)}})                             \
     }
 
     return SimpleTspiceInfo{
@@ -502,7 +500,7 @@ inline ChainedCrossbar::ChainedCrossbar(
     for (int i = 0; i < N_BARS - 1; i++) {
         this->bars[i + 1].rows.resize(N_ROWS);
         for (auto const &swizz : swizzles[i]) {
-            this->bars[i + 1].rows[swizz.second] = ChainedRowCon{.sibiling = (uint8_t)swizz.first};
+            this->bars[i + 1].rows[swizz.second] = ChainedRowCon{.sibling = (uint8_t)swizz.first};
         }
     }
 }
@@ -515,7 +513,7 @@ inline ChainedCrossbar::ChainedCrossbar(std::initializer_list<PhysCrossbar> nbar
         size_t n = bar.rows.size();
         bar.rows.clear();
         for (uint8_t i = 0; i < n; i++) {
-            bar.rows.push_back(ChainedRowCon{.sibiling = i});
+            bar.rows.push_back(ChainedRowCon{.sibling = i});
         }
     }
 }

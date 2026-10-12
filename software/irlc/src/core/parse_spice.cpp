@@ -334,7 +334,7 @@ void add_element(Netlist &netlist, NetNameMap &netnames, ModelMap &models,
     // NOTE:
     // If slow, we could do a regex/FA on a concatenated reference + value to find proper
     // initializer
-    // This is a perfomative comment to show I thought of a cool idea to do this but was too lazy
+    // This is a performative comment to show I thought of a cool idea to do this but was too lazy
 
     bool found_match = false;
     bool any_ref_found = false;

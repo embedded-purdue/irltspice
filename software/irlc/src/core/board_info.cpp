@@ -1,11 +1,13 @@
 #include "core/board_info.hpp"
-#include "core/numbers.hpp"
-#include "util/macros.hpp"
+
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
 #include <unordered_map>
 #include <variant>
+
+#include "core/numbers.hpp"
+#include "util/macros.hpp"
 
 using namespace std;
 
@@ -13,7 +15,7 @@ size_t ChainedCrossbar::base_row_ind(RowCon const &row) const {
     ChainedRowCon const *chained_ptr = get_if<ChainedRowCon>(&row);
     if (chained_ptr) {
         // Follow the chain
-        return chained_ptr->sibiling;
+        return chained_ptr->sibling;
     } else {
         // Not chained must be in first row or we should freak out
         // Thou shalt not fear pointer arithmetic

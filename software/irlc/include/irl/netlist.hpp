@@ -1,7 +1,8 @@
 #pragma once
 
-#include <cassert>
+#include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <span>
 #include <string>
 #include <utility>
@@ -135,7 +136,7 @@ template <NetlistEdgeKind Kind> class EdgeKindInfo {};
     template <> class EdgeKindInfo<NetlistEdgeKind::NAME> {                                        \
       public:                                                                                      \
         /* The NetlistVertexValue type associated with this vertex kind */                         \
-        using AssociatedData = typeof(NetlistEdgeValue{}.UNION_FIELD);                             \
+        using AssociatedData = decltype(NetlistEdgeValue{}.UNION_FIELD);                           \
         constexpr static auto AssociatedField = &NetlistEdgeValue::UNION_FIELD;                    \
         static constexpr auto AssociatedVertKind = NetlistVertexKind::ASSOCIATED_VERT_KIND;        \
     };
@@ -153,24 +154,20 @@ class NetlistVertex {
 
   private:
     // Use 5 edges so all opamps can be stored in struct
-    using EdgeList = detail::SmallVec<NetlistEdge *, 3>;
+    using EdgeList = detail::SmallVec<NetlistEdge *, 5>;
 
     NetlistVertexValue mValue;
     EdgeList mEdgeList;
 
     NetlistVertexKind mKind;
 
-    // If you do this you guarentee assert the the active field of val matches kind
+    // If you do this you guarantee assert the the active field of val matches kind
     NetlistVertex(std::string &&name, NetlistVertexKind kind, NetlistVertexValue &&val)
         : mName(std::move(name)), mValue(std::move(val)), mEdgeList{}, mKind(kind) {}
 
-    template <NetlistVertexKind newKind>
-    NetlistVertex(std::string &&name, VertKindInfo<newKind>::AssociatedData &&data);
-
-    // Much fewer data types, hence much easier to template off of for creation
-    // Will do a little check to ensure that the kind matches the type
-    template <typename AssociatedData>
-    NetlistVertex(std::string &&name, NetlistVertexKind kind, AssociatedData &&data);
+    // Hard to impl as constructors' template params can't be specified
+    // template <NetlistVertexKind newKind>
+    // NetlistVertex(std::string &&name, VertKindInfo<newKind>::AssociatedData &&data);
 
   public:
     inline NetlistVertexKind get_kind() const { return mKind; }
@@ -183,6 +180,7 @@ class NetlistVertex {
     inline std::span<NetlistEdge const *const> connections() const {
         return {mEdgeList.begin(), mEdgeList.end()};
     }
+    inline std::span<NetlistEdge *> connections() { return {mEdgeList.begin(), mEdgeList.end()}; }
 
     // Disconnects from index i of connections()
     void disconnect_index(size_t index);
@@ -245,7 +243,7 @@ class Netlist {
     NetlistEdge *alloc_edge();
 
   public:
-    // Create a new vertex in the nelist
+    // Create a new vertex in the netlist
     template <NetlistVertexKind newKind>
     NetlistVertex *new_vertex(std::string &&name, VertKindInfo<newKind>::AssociatedData &&data) {
         NetlistVertex *loc = alloc_vertex();
@@ -263,7 +261,7 @@ class Netlist {
     NetlistEdge *connect(NetlistVertex *v1, NetlistVertex *v2,
                          EdgeKindInfo<KIND>::AssociatedData &&data) {
 
-        detail::ASSERT(v1 == nullptr || v2 == nullptr, "Attempted to connect to a null vertex.");
+        detail::ASSERT(v1 != nullptr && v2 != nullptr, "Attempted to connect to a null vertex.");
 
         NetlistVertex *component;
         NetlistVertex *net;
@@ -280,12 +278,18 @@ class Netlist {
             component = v1;
         }
 
+        detail::ASSERT(component->get_kind() == EdgeKindInfo<KIND>::AssociatedVertKind,
+                       "Attempted to connect an edge to a non-matching component.");
+
         NetlistEdgeValue val;
         new (&(val.*EdgeKindInfo<KIND>::AssociatedField))
             EdgeKindInfo<KIND>::AssociatedData{std::move(data)};
 
         NetlistEdge *loc = alloc_edge();
         new (loc) NetlistEdge(component, net, KIND, std::move(val));
+
+        net->mEdgeList.push_back(loc);
+        component->mEdgeList.push_back(loc);
 
         return loc;
     }
