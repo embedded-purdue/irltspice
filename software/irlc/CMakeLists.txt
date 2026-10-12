@@ -58,6 +58,14 @@ CPMAddPackage(
 )
 include("${protobuf_BINARY_DIR}/cmake/protobuf/protobuf-generate.cmake")
 
+# fast_float
+# Due to macos requireing 26.0 for std::from_chars with doubles, we depend on fast_float, which provides a near-identical api in header-only form
+CPMAddPackage(
+  NAME fast_float
+  GITHUB_REPOSITORY "fastfloat/fast_float"
+  GIT_TAG v8.3.2
+)
+
 # =======
 # Targets
 # =======
@@ -94,6 +102,7 @@ target_link_libraries(libirlc
         Boost::asio
         Boost::outcome
         protobuf::libprotobuf
+        fast_float
 )
 
 make_directory(${GEN_PROTOBUF_SRC_DIR})

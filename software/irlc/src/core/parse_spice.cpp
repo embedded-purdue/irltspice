@@ -1,21 +1,26 @@
-#include "core/debug.hpp"
-#include "core/netlist.hpp"
-#include "core/numbers.hpp"
-#include "core/parse.hpp"
 #include <cassert>
 #include <cctype>
-#include <charconv>
 #include <cstdint>
+#include <cstdlib>
 #include <iostream>
-#include <iterator>
 #include <memory>
-#include <stdexcept>
 #include <string>
 #include <string_view>
+#include <system_error>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
+#include "core/debug.hpp"
+#include "core/netlist.hpp"
+#include "core/parse.hpp"
+#include "detail/util.hpp"
+#include "fast_float/parse_number.h"
+#include "irl_netlist.hpp"
+
 using namespace std;
+using namespace irl;
+using namespace irl::detail;
 
 bool SpiceParser::matches_filename(const string &filename) {
     return filename.ends_with(".spice") || filename.ends_with(".sp") || filename.ends_with(".cir");
@@ -167,7 +172,7 @@ struct Tokenizer {
 
 // WARN:
 // If you move this out of this file it can't be string views they don't own.
-typedef unordered_map<string_view, RawVert> NetNameMap;
+typedef unordered_map<string_view, NetlistVertex *> NetNameMap;
 typedef unordered_map<string_view, string_view> ModelMap;
 
 static inline void assert_net_count(int num, string_view reference, const string &filename,
@@ -181,40 +186,122 @@ static inline void assert_net_count(int num, string_view reference, const string
     }
 }
 
-static inline val_pico_t get_component_value(string_view reference, const string &filename,
-                                             const vector<Token *> &line) {
+static inline uint32_t parse_custom_id(string_view reference, const string &filename,
+                                       const vector<Token *> &line) {
+    return -1;
+}
+
+static inline double parse_spice_number(string_view reference, const string &filename,
+                                        const vector<Token *> &line) {
     Token *val_token = line[line.size() - 1];
 
-    val_pico_t value;
-    try {
-        value = val_pico_t::from_str(val_token->underlying);
-    } catch (runtime_error &e) {
+    string_view num = val_token->underlying;
+
+    const string_view numbers("0123456789");
+
+    constexpr array<pair<const char *, double>, 11> multipliers{
+        pair{"T", 10e12},     pair{"G", 10e9},   pair{"Meg", 10e6}, pair{"K", 10e3},
+        pair{"mil", 25.4e-6}, pair{"m", 10e-3},  pair{"u", 10e-6},  pair{"n", 10e-9},
+        pair{"p", 10e-12},    pair{"f", 10e-15}, pair{"a", 10e-18}};
+
+    double multiplier = 1;
+    double value = 0;
+    fast_float::from_chars_result result = fast_float::from_chars(num.begin(), num.end(), value);
+
+    if (result.ec == std::errc{}) {
+        string_view suffix{result.ptr, (&num[num.size() - 1]) + 1};
+        if (suffix.size() == 0) {
+            multiplier = 1;
+        } else {
+            for (auto const &m : multipliers) {
+                if (suffix == m.first) {
+                    multiplier = m.second;
+                    break;
+                }
+            }
+            if (multiplier == 1) {
+                throw ParseException::create(ParseException::PARSE_ERROR,
+                                             string("Component: ") + string(reference) +
+                                                 " , has bad value. Unrecognizes suffix: \"" +
+                                                 string(suffix) + "\"",
+                                             filename, val_token->line_number);
+            }
+        }
+    } else {
         throw ParseException::create(ParseException::PARSE_ERROR,
                                      string("Component: ") + string(reference) +
-                                         " , has bad value. Details: " + e.what(),
+                                         " , has bad value. Couldn't parse number",
                                      filename, val_token->line_number);
     }
 
     return value;
 }
 
-static inline RawVert get_or_add_net(RawNetlist &netlist, NetNameMap &netnames,
-                                     string_view net_name) {
+static inline NetlistVertex *get_or_add_net(Netlist &netlist, NetNameMap &netnames,
+                                            string_view net_name) {
 
     if (netnames.contains(net_name)) {
         return netnames[net_name];
     }
 
-    auto net = boost::add_vertex(
-        RawNetlistVertexInfo{
-            .kind = NET, .name = string(net_name), .value = {.net_value = get_net_kind(net_name)}},
-        netlist);
+    NetlistVertex *net = netlist.new_vertex<NET>(string(net_name), WIRE);
 
     netnames[net_name] = net;
     return net;
 }
 
-void add_element(RawNetlist &netlist, NetNameMap &netnames, ModelMap &models,
+static inline NetlistVertex *create_numeric_node(Netlist &netlist, NetlistVertexKind kind,
+                                                 std::string &&name, double numeric) {
+    switch (kind) {
+    case NetlistVertexKind::R:
+        return netlist.new_vertex<R>(std::move(name), std::move(numeric));
+    case NetlistVertexKind::C:
+        return netlist.new_vertex<C>(std::move(name), std::move(numeric));
+    default:
+        ASSERT(false, "Internal error: non-numeric created with create_numeric_node.");
+        return nullptr;
+    }
+}
+
+static inline NetlistVertex *create_valuelesss_node(Netlist &netlist, NetlistVertexKind kind,
+                                                    std::string &&name) {
+    switch (kind) {
+    case NetlistVertexKind::OPAMP:
+        return netlist.new_vertex<OPAMP>(std::move(name), {});
+    case NetlistVertexKind::DIODE:
+        return netlist.new_vertex<DIODE>(std::move(name), {});
+    case NetlistVertexKind::Q_PNP:
+        return netlist.new_vertex<Q_PNP>(std::move(name), {});
+    case NetlistVertexKind::Q_NPN:
+        return netlist.new_vertex<Q_NPN>(std::move(name), {});
+    default:
+        ASSERT(false, "Internal error: non-valueless created with create_valuelesss_node");
+        return nullptr;
+    }
+}
+
+static void connect_valueless(Netlist &netlist, NetlistVertex *v1, NetlistVertex *v2,
+                              NetlistEdgeKind kind) {
+
+#define KIND_xbarPinId(NAME, ASSOCIATED_VERT_KIND)
+#define KIND_pinIndex(NAME, ASSOCIATED_VERT_KIND)
+#define KIND_empty(NAME, ASSOCIATED_VERT_KIND)                                                     \
+    case NetlistEdgeKind::NAME:                                                                    \
+        netlist.connect<NetlistEdgeKind::NAME>(v1, v2, {});                                        \
+        break;
+#define EDGE_KIND(NAME, ASSOCIATED_VERT_KIND, UNION_FIELD)                                         \
+    KIND_##UNION_FIELD(NAME, ASSOCIATED_VERT_KIND)
+
+    switch (kind) {
+        EDGE_KINDS
+    default:
+        ASSERT(false, "Internal error: non-valueless created with create_valuelesss_node");
+    }
+
+#undef EDGE_KIND
+}
+
+void add_element(Netlist &netlist, NetNameMap &netnames, ModelMap &models,
                  const vector<Token *> &line, const string &filename) {
     if (line.size() < 2) {
         throw ParseException::create(
@@ -230,7 +317,7 @@ void add_element(RawNetlist &netlist, NetNameMap &netnames, ModelMap &models,
     int reference_num;
     // Parse reference_num
     const char *end_ptr = reference.data() + reference.size();
-    auto result = std::from_chars(first_num, end_ptr, reference_num);
+    auto result = fast_float::from_chars(first_num, end_ptr, reference_num);
     if (reference_kind.length() == 0 || result.ec != std::errc{} || result.ptr != end_ptr ||
         first_num == end_ptr) {
         throw ParseException::create(ParseException::PARSE_ERROR,
@@ -280,26 +367,22 @@ void add_element(RawNetlist &netlist, NetNameMap &netnames, ModelMap &models,
         found_match = true;
 
         assert_net_count(recognized.pins.size(), reference, filename, line);
-        RawVert vert;
+        NetlistVertex *vert;
+        if (recognized.component_kind == CUSTOM) {
+            uint32_t customid = parse_custom_id(reference, filename, line);
+            vert = netlist.new_vertex<CUSTOM>(string(reference), std::move(customid));
+        }
         if (recognized.numeric_value) {
-            val_pico_t val = get_component_value(reference, filename, line);
-            vert = boost::add_vertex(RawNetlistVertexInfo{.kind = recognized.component_kind,
-                                                          .name = string(reference),
-                                                          .value =
-                                                              {
-                                                                  .numeric_value = val,
-                                                              }},
-                                     netlist);
+            double val = parse_spice_number(reference, filename, line);
+            vert = create_numeric_node(netlist, recognized.component_kind, string(reference), val);
         } else {
-            vert = boost::add_vertex(RawNetlistVertexInfo{.kind = recognized.component_kind,
-                                                          .name = string(reference),
-                                                          .value = {.no_val = {}}},
-                                     netlist);
+            vert = create_valuelesss_node(netlist, recognized.component_kind, string(reference));
         }
 
+        vert->reserve_pins(recognized.pins.size());
         for (int i = 0; i < recognized.pins.size(); i++) {
             auto pad = get_or_add_net(netlist, netnames, line[1 + i]->underlying);
-            boost::add_edge(vert, pad, RawNetlistEdgeInfo{.kind = recognized.pins[i]}, netlist);
+            connect_valueless(netlist, vert, pad, recognized.pins[i]);
         }
 
         // We found a match, break out of the loop
@@ -321,9 +404,9 @@ void add_element(RawNetlist &netlist, NetNameMap &netnames, ModelMap &models,
     }
 }
 
-unique_ptr<RawNetlist> SpiceParser::try_parse(const string &filename, string_view in) const {
+unique_ptr<Netlist> SpiceParser::try_parse(const string &filename, string_view in) const {
 
-    unique_ptr<RawNetlist> netlist(new RawNetlist);
+    unique_ptr<Netlist> netlist(new Netlist);
 
     Tokenizer tokenizer(in);
 

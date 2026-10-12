@@ -1,14 +1,16 @@
 #pragma once
 
-#include "core/compiler.hpp"
-#include "core/netlist.hpp"
 #include <array>
-#include <iostream>
 #include <memory>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
-#include <sys/types.h>
+
+#include "core/compiler.hpp"
+#include "irl_netlist.hpp"
+
+namespace irl {
 
 // An interface for a parser that can take an input circuit into a raw netlist
 class INetlistParser {
@@ -20,8 +22,8 @@ class INetlistParser {
     virtual ~INetlistParser() = default;
     virtual const char *parser_name() const = 0;
 
-    virtual std::unique_ptr<RawNetlist> try_parse(const std::string &filename,
-                                                  std::string_view in) const = 0;
+    virtual std::unique_ptr<Netlist> try_parse(const std::string &filename,
+                                               std::string_view in) const = 0;
 };
 
 class ParseException : public std::runtime_error {
@@ -55,8 +57,8 @@ class SpiceParser : public INetlistParser {
 
     virtual const char *parser_name() const override { return "Spice Parser"; };
 
-    virtual std::unique_ptr<RawNetlist> try_parse(const std::string &filename,
-                                                  std::string_view in) const override;
+    virtual std::unique_ptr<Netlist> try_parse(const std::string &filename,
+                                               std::string_view in) const override;
 };
 
 // KiCad eeschema xml parser
@@ -69,8 +71,8 @@ class EeschemaParser : public INetlistParser {
 
     virtual const char *parser_name() const override { return "Eeschema Parser"; };
 
-    virtual std::unique_ptr<RawNetlist> try_parse(const std::string &filename,
-                                                  std::string_view in) const override;
+    virtual std::unique_ptr<Netlist> try_parse(const std::string &filename,
+                                               std::string_view in) const override;
 };
 
 // Factory for making parsers
@@ -103,3 +105,5 @@ template <typename... Parsers> class ParserFactory {
 };
 
 typedef ParserFactory<EeschemaParser, SpiceParser> AllParsersFactory;
+
+}; // namespace irl

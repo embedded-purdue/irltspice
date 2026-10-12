@@ -1,9 +1,13 @@
+#pragma once
+
 #include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
 #include <string_view>
 #include <variant>
+
+#include "irl_netlist.hpp"
 
 namespace irl {
 
@@ -103,6 +107,8 @@ struct DaughterboardTopology {
     uint64_t uniqueId;
     FirmwareVersion firmwareVersion;
     DaughterboardKind kind;
+    // The actual topology of this daughterboard
+    Netlist netlist;
 };
 
 // Topology information aobut a motherboard
@@ -112,6 +118,8 @@ struct MotherboardTopology {
     uint32_t hardwareRevision;
     FirmwareVersion firmwareVersion;
     DaughterboardTopology daughterboards[4];
+    // The actual topology of this motherboard
+    Netlist netlist;
 };
 
 // The topology of a connected board.
@@ -133,6 +141,8 @@ struct IrlTopology {
     // disconnecting a board), the driver will detect this and stop accepting
     // this IrlTopology
     size_t topoSequenceNumber;
+    // IrlDriver has to be able to check topoSequenceNumber
+    friend class IrlDriver;
 };
 
 // The class used for interfacing with the tspice
