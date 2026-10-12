@@ -1,4 +1,5 @@
 /build/**
+.clangd
 tests/data/*.kicad_prl
 tests/data/*.kicad_pro
 tests/data/*.kicad_sch
