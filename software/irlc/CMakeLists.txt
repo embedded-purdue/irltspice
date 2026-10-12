@@ -95,6 +95,7 @@ target_include_directories(libirlc
         ${IRLC_DIR}/include/
     PRIVATE
         ${GEN_PROTOBUF_SRC_DIR}
+        ${IRLC_DIR}/src/
 )
 target_link_libraries(libirlc 
     PRIVATE 

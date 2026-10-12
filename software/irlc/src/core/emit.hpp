@@ -1,7 +1,5 @@
 #pragma once
 
-#include "core/compiler.hpp"
-#include "core/route.hpp"
 #include <boost/asio.hpp>
 #include <boost/asio/serial_port.hpp>
 #include <boost/outcome/result.hpp>
@@ -11,6 +9,9 @@
 #include <ostream>
 #include <stdexcept>
 #include <string_view>
+
+#include "core/compiler.hpp"
+#include "core/route.hpp"
 
 typedef enum ProgrammingErrorKind {
     PORT_CLOSED,

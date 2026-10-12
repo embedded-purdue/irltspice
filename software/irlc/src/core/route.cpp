@@ -1,10 +1,5 @@
-#include "core/board_info.hpp"
-#include "core/compiler.hpp"
-#include "core/netlist.hpp"
-#include "core/numbers.hpp"
-#include "core/verify.hpp"
-#include "util/boost_util.hpp"
-#include "util/macros.hpp"
+#include "core/route.hpp"
+
 #include <algorithm>
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/breadth_first_search.hpp>
@@ -12,7 +7,6 @@
 #include <boost/range/adaptor/indexed.hpp>
 #include <boost/range/iterator_range_core.hpp>
 #include <cassert>
-#include <core/route.hpp>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -27,6 +21,14 @@
 #include <unordered_map>
 #include <utility>
 #include <variant>
+
+#include "core/board_info.hpp"
+#include "core/compiler.hpp"
+#include "core/netlist.hpp"
+#include "core/numbers.hpp"
+#include "core/verify.hpp"
+#include "util/boost_util.hpp"
+#include "util/macros.hpp"
 
 using namespace std;
 using namespace boost;
