@@ -18,7 +18,7 @@ typedef struct val_pico {
     static val_pico from_str(std::string_view str);
 
     // Holy const
-    // Also I can now see why resut has Derive
+    // Also I can now see why result has Derive
     constexpr bool operator==(val_pico const &other) const { return v == other.v; };
     constexpr bool operator!=(val_pico const &other) const { return v != other.v; };
     constexpr bool operator<(val_pico const &other) const { return v < other.v; };

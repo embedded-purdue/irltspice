@@ -1,12 +1,14 @@
 #include "core/verify.hpp"
-#include "util/macros.hpp"
+
 #include <boost/graph/graph_concepts.hpp>
 #include <variant>
+
+#include "util/macros.hpp"
 
 using namespace std;
 using namespace boost;
 
-uint32_t IrlVerifier::check_netlist_violations(RawNetlist const &netlist) {
+uint32_t IrlVerifier::check_netlist_violations(Netlist const &netlist) {
 
     uint32_t violation_count = 0;
 

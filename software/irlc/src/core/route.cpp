@@ -91,7 +91,7 @@ StdCell const &AssignedNetlist::get_cell(RawVert v) {
 }
 
 /* clang-format off */
-// Cells start white, get marked gray when in queue, then balck once finished
+// Cells start white, get marked gray when in queue, then black once finished
 //
 // See boost::breadth_first_visit in for implementation
 //
@@ -170,7 +170,7 @@ class CellAssigningVisitor : public boost::bfs_visitor<> {
                 break;
             case CIR_OUTPUT:
                 // Since the output is driven by a cell, we treat it as just another cell output to
-                // be routed back to us through the main switch. Thus we can fall through and re-use
+                // be routed back to us through the main switch. Thus we can fall through and reuse
                 // the wire logic.
                 if (!buffer_outputs.contains(v)) {
                     rule_failed<"Circuit output must be driven by only a buffer">();
@@ -499,7 +499,7 @@ ProgrammingInfo SimpleTspiceRouter::do_routing(unique_ptr<AssignedNetlist> &assi
                         // 2 options:
                         //  1. It's already hard-wired to a cell row
                         //  2. It's routable form the top level.
-                        // Let's start by chekcing option 1:
+                        // Let's start by checking option 1:
                         for (RowCon const &row : phy_cell.crossbars.rows()) {
                             int row_i = &row - &phy_cell.crossbars.rows()[0];
                             SpecialNetCon const *con = std::get_if<SpecialNetCon>(&row);
@@ -599,7 +599,7 @@ ProgrammingInfo SimpleTspiceRouter::do_routing(unique_ptr<AssignedNetlist> &assi
         for (auto const &component_vert : cell.components) {
             RawNetlistVertexInfo const &component = (*assigned->raw_list)[component_vert];
 
-            // Find a valid physcial component
+            // Find a valid physical component
             ColConIter phy_component_pin_1 =
                 std::find_if(phy_cell.crossbars.cols_begin(), phy_cell.crossbars.cols_end(),
                              [&component, &taken_components](ColCon const &col) {
