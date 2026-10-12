@@ -1,1 +1,0 @@
-../../../../firmware/include/legacy/uart_bytes.h

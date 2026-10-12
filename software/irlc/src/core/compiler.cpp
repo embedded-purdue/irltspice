@@ -1,11 +1,6 @@
 #include "core/compiler.hpp"
-#include "core/board_info.hpp"
-#include "core/debug.hpp"
-#include "core/emit.hpp"
-#include "core/netlist.hpp"
-#include "core/parse.hpp"
-#include "core/route.hpp"
-#include "core/verify.hpp"
+// #include "core/board_info.hpp"
+// #include "core/emit.hpp"
 #include <boost/system/detail/errc.hpp>
 #include <boost/system/detail/error_code.hpp>
 #include <boost/system/system_error.hpp>
@@ -16,7 +11,14 @@
 #include <stdexcept>
 #include <string>
 
+#include "core/debug.hpp"
+#include "core/netlist.hpp"
+#include "core/parse.hpp"
+#include "core/route.hpp"
+#include "core/verify.hpp"
+
 using namespace std;
+using namespace irl;
 
 int IrlCompiler::invoke() {
 
@@ -52,9 +54,9 @@ int IrlCompiler::invoke() {
 
     std::string in_content(istreambuf_iterator<char>{in_file}, istreambuf_iterator<char>{});
 
-    auto parsers = AllParsersFactory().make_parsers_prioritized(*opts.input_file, *this);
+    auto parsers = AllParsersFactory::make_parsers_prioritized(*opts.input_file, *this);
 
-    unique_ptr<RawNetlist> netlist(nullptr);
+    unique_ptr<Netlist> netlist(nullptr);
     start_clock();
     for (const unique_ptr<INetlistParser> &parser : parsers) {
         if (opts.should_verbose_parse()) {

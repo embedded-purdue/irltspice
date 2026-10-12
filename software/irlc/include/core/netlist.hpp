@@ -3,38 +3,15 @@
 // Master docs:
 // https://www.boost.org/doc/libs/latest/libs/graph/doc/table_of_contents.html
 
-#include "core/numbers.hpp"
-#include "util/macros.hpp"
 #include <array>
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/graph_selectors.hpp>
 #include <cstddef>
-#include <memory>
 #include <span>
-#include <sys/types.h>
-#include <utility>
-#include <vector>
 
-typedef enum NetlistVertexKind {
-    NET,
-    R,
-    C,
-    OPAMP,
-    DIODE,
-    Q_PNP,
-    Q_NPN,
-    CUSTOM,
-    CELL_BUFFER,
-} NetlistVertexKind;
+#include "irl_netlist.hpp"
+#include "util/macros.hpp"
 
-typedef enum NetKind {
-    WIRE,
-    CIR_INPUT,
-    CIR_OUTPUT,
-    V_GND,
-    V_HIGH,
-    V_NEG,
-} NetKind;
 // Netlists are represented as a bipartite graph, where the left side
 //   consists of vertecies representing nets and the right side consists
 //   of vertecies representing components.
@@ -43,19 +20,11 @@ typedef enum NetKind {
 //   Each vertex contains metadata about the component/net, i.e.
 //     if it is GND/5V or an OpAmp or what resistance it should be
 
-struct RawNetlistVertexInfo {
-    // NOTE:
-    // If you add to this, remember to update get_net_kind
+namespace irl {
 
-    NetlistVertexKind kind;
-    std::string name;
-    union RawNetlistVertexValue {
-        val_pico_t numeric_value;
-        NetKind net_value;
-        struct NoVal {
-        } no_val;
-    } value;
-};
+using enum NetKind;
+using enum NetlistVertexKind;
+using enum NetlistEdgeKind;
 
 constexpr const std::array IRL_CIR_INPUT_NET_NAMES = {"INPUT"};
 constexpr const std::array IRL_CIR_OUTPUT_NET_NAMES = {"OUTPUT"};
@@ -95,32 +64,6 @@ static inline NetKind get_net_kind(auto &net_name) {
     return WIRE;
 };
 
-typedef enum NetlistEdgeKind {
-    PIN_R,
-    PIN_C,
-    PIN_OPAMP_PLUS,
-    PIN_OPAMP_MINUS,
-    PIN_OPAMP_SUPPLY_PLUS,
-    PIN_OPAMP_SUPPLY_MINUS,
-    PIN_OPAMP_OUT,
-    PIN_Q_PNP_BASE,
-    PIN_Q_PNP_EMITTER,
-    PIN_Q_PNP_COLLECTOR,
-    PIN_Q_NPN_BASE,
-    PIN_Q_NPN_EMITTER,
-    PIN_Q_NPN_COLLECTOR,
-    PIN_D_K,
-    PIN_D_A,
-    PIN_CUSTOM_A,
-    PIN_CUSTOM_B,
-    PIN_CELL_BUFFER_IN,
-    PIN_CELL_BUFFER_OUT
-} NetlistEdgeKind;
-
-struct RawNetlistEdgeInfo {
-    NetlistEdgeKind kind;
-};
-
 typedef struct _RecognizedComponent {
     // Identifying info
     const char *long_name;
@@ -133,23 +76,6 @@ typedef struct _RecognizedComponent {
     // Ordered according to how they appear in a spice file
     std::span<const NetlistEdgeKind> pins;
 } RecognizedComponent;
-
-// See:
-// https://www.boost.org/doc/libs/latest/libs/graph/doc/using_adjacency_list.html
-// for tradeoffs. By using vecS for all we get performance, but technically we
-// could insert parallel edges if we aren't careful
-//
-// A RawNetlist contains info about all of the components, with no notion of
-// standard cells.
-// BGL Properties:
-//      Vertex - RawNetlistVertexInfo
-//      Edge - RawNetlistEdgeInfo
-typedef boost::adjacency_list<boost::vecS, boost::listS, boost::undirectedS, RawNetlistVertexInfo,
-                              RawNetlistEdgeInfo>
-    RawNetlist;
-
-typedef RawNetlist::vertex_descriptor RawVert;
-typedef RawNetlist::edge_descriptor RawEdge;
 
 // Bullshit for listing parseable components
 // =========================================
@@ -176,19 +102,21 @@ struct RCStorage {
               arrify("opamp", "kicad_builtin_opamp"),
               arrify(PIN_OPAMP_PLUS, PIN_OPAMP_MINUS, PIN_OPAMP_SUPPLY_PLUS, PIN_OPAMP_SUPPLY_MINUS,
                      PIN_OPAMP_OUT))
-    COMPONENT(DIODE, "Diode", false, arrify("D"), arrify<const char *>(), arrify(PIN_D_A, PIN_D_K))
+    COMPONENT(DIODE, "Diode", false, arrify("D"), arrify<const char *>(),
+              arrify(PIN_DIODE_A, PIN_DIODE_K))
     COMPONENT(Q_PNP, "BJT (PNP)", false, arrify("Q"), arrify("PNP"),
               arrify(PIN_Q_PNP_COLLECTOR, PIN_Q_PNP_BASE, PIN_Q_PNP_EMITTER))
     COMPONENT(Q_NPN, "BJT (NPN)", false, arrify("Q"), arrify("NPN"),
               arrify(PIN_Q_NPN_COLLECTOR, PIN_Q_NPN_BASE, PIN_Q_NPN_EMITTER))
     COMPONENT(CUSTOM, "User's custom component", false, arrify("U"), arrify("CUSTOM"),
-              arrify(PIN_CUSTOM_A, PIN_CUSTOM_B))
-    COMPONENT(CELL_BUFFER, "IRLTSPICE standard cell output buffer", false, arrify("U"),
-              arrify("IRL_BUFFER"), arrify(PIN_CELL_BUFFER_OUT, PIN_CELL_BUFFER_IN))
+              arrify(PIN_CUSTOM, PIN_CUSTOM))
+    // COMPONENT(CELL_BUFFER, "IRLTSPICE standard cell output buffer", false, arrify("U"),
+    //           arrify("IRL_BUFFER"), arrify(PIN_CELL_BUFFER_OUT, PIN_CELL_BUFFER_IN))
 };
 
 constexpr RecognizedComponent RECOGNIZED_COMPONENTS[] = {
-    RCStorage::component_R,      RCStorage::component_C,           RCStorage::component_OPAMP,
-    RCStorage::component_DIODE,  RCStorage::component_Q_PNP,       RCStorage::component_Q_NPN,
-    RCStorage::component_CUSTOM, RCStorage::component_CELL_BUFFER,
-};
+    RCStorage::component_R,     RCStorage::component_C,     RCStorage::component_OPAMP,
+    RCStorage::component_DIODE, RCStorage::component_Q_PNP, RCStorage::component_Q_NPN,
+    RCStorage::component_CUSTOM};
+
+} // namespace irl
