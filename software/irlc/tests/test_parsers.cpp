@@ -1,5 +1,3 @@
-#include "core/compiler.hpp"
-#include "core/parse.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <filesystem>
 #include <fstream>
@@ -9,6 +7,11 @@
 #include <sstream>
 #include <string>
 #include <string_view>
+
+#include "core/compiler.hpp"
+#include "core/parse.hpp"
+
+using namespace irl;
 
 TEST_CASE("Factory Identifies Parsers", "[parse]") {
 
