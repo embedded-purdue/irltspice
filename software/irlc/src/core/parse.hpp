@@ -8,7 +8,7 @@
 #include <string_view>
 
 #include "core/compiler.hpp"
-#include "irl_netlist.hpp"
+#include "irl/netlist.hpp"
 
 namespace irl {
 

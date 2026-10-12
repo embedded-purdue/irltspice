@@ -2,7 +2,7 @@
 #include <stdexcept>
 
 #include "core/parse.hpp"
-#include "irl_netlist.hpp"
+#include "irl/netlist.hpp"
 
 using namespace std;
 using namespace irl;

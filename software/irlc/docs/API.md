@@ -16,7 +16,7 @@ Completely stateless, takes in user designs (either programatically or from file
 Used to exchange information between the driver and the compiler.
 
 Due to the need for `irlc` and `irld` to share binary C++ datastructures (the graph from `irlnetlist`), these three
-APIs are always bundled into a single binary (`libirl.a/.so`), although the headers `irl_driver.hpp` and `irl_graph.hpp` can be used independently.
+APIs are always bundled into a single binary (`libirl.a/.so`), although the headers `irl/driver.hpp` and `irl/compiler.hpp` can be used independently.
 
 Python consumers can access these three at `irl.driver`, `irl.compiler`, and `irl.netlist`.
 
