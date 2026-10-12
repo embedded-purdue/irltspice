@@ -68,7 +68,7 @@ int IrlCompiler::invoke() {
         } catch (runtime_error &e) {
             log_error(e.what());
         } catch (...) {
-            log_error("Unknown error occured parsing.");
+            log_error("Unknown error occurred parsing.");
         }
     }
     stop_clock("parse");
@@ -116,7 +116,7 @@ int IrlCompiler::invoke() {
     } catch (runtime_error &e) {
         log_error(e.what());
     } catch (...) {
-        log_error("Unknown error occured parsing.");
+        log_error("Unknown error occurred parsing.");
     }
 
     if (assigned.get() == nullptr) {
@@ -129,7 +129,7 @@ int IrlCompiler::invoke() {
     } catch (runtime_error &e) {
         log_error(e.what());
     } catch (...) {
-        log_error("Unknown error occured parsing.");
+        log_error("Unknown error occurred parsing.");
     }
     stop_clock("route");
 
@@ -150,9 +150,9 @@ int IrlCompiler::invoke() {
                 }
             } catch (const runtime_error &e) {
                 log_error(e.what());
-                log_fd << "    Occured opening serial port\n";
+                log_fd << "    Occurred opening serial port\n";
             } catch (...) {
-                log_error("Unknown error occured opening serial port\n");
+                log_error("Unknown error occurred opening serial port\n");
             }
             if (serial.get() == nullptr) {
                 return -1;
@@ -201,7 +201,7 @@ int IrlCompiler::print_info() {
         int i = 0;
         cout << "{";
         for (auto &component : RECOGNIZED_COMPONENTS) {
-            cout << "\n  \"" << component.long_name << "\": {\n    \"Referece Designators\": [";
+            cout << "\n  \"" << component.long_name << "\": {\n    \"Reference Designators\": [";
             cout << '"' << component.spice_prefixes[0] << '"';
             for (int i = 1; i < component.spice_prefixes.size(); i++) {
                 cout << ", \"" << component.spice_prefixes[i] << '"';

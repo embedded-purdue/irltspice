@@ -53,7 +53,7 @@ typedef enum unspecified_t { UNSPECIFIED } unspecified_t;
     FLAG_OPT(verbose_cell_assign, "", "Enable verbose cell assignment", ROUTING)                   \
     FLAG_OPT(verbose_verify, "", "Enable verbose rule verification", ROUTING)                      \
     FLAG_OPT(verbose_connections, "", "Enable verbose connection building", ROUTING)               \
-    FLAG_OPT(verbose_program, "", "Enable verbose board progamming", PROGRAMMING)                  \
+    FLAG_OPT(verbose_program, "", "Enable verbose board programming", PROGRAMMING)                 \
     FLAG_OPT(do_programming, "p",                                                                  \
              "Enable board programming. Must be used with -m and/or -s. Default is false",         \
              PROGRAMMING)                                                                          \

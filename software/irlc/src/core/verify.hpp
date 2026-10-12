@@ -20,9 +20,9 @@ typedef enum no_violation_t { NO_VIOLATION } no_violation_t;
 
 typedef std::variant<no_violation_t, std::string> RuleViolationResult;
 
-typedef RuleViolationResult (*VertexRuleViolates_t)(RawNetlist const &netlist, RawVert v);
+typedef RuleViolationResult (*VertexRuleViolates_t)(Netlist const &netlist, NetlistVertex const *v);
 
-typedef RuleViolationResult (*GraphRuleViolates_t)(RawNetlist const &netlist);
+typedef RuleViolationResult (*GraphRuleViolates_t)(Netlist const &netlist);
 
 struct RawNetlistVertexRule {
     const char *rule_name;
@@ -43,13 +43,13 @@ class IrlVerifier {
     IrlVerifier(IrlCompiler const &compiler) : compiler(compiler) {};
 
     // Returns the number of rule violations logged
-    uint32_t check_netlist_violations(RawNetlist const &netlist);
+    uint32_t check_netlist_violations(Netlist const &netlist);
 };
 
 constexpr std::array RAW_GRAPH_RULES = {
     RawNetlistGraphRule{.rule_name = "Circuit contains output",
-                        .rule = [](RawNetlist const &netlist) -> RuleViolationResult {
-                            for (auto v : pair_to_iter(boost::vertices(netlist))) {
+                        .rule = [](Netlist const &netlist) -> RuleViolationResult {
+                            for (auto v : pair_to_iter(netlist.vertices())) {
                                 if (netlist[v].kind == NET &&
                                     netlist[v].value.net_value == CIR_OUTPUT) {
                                     return NO_VIOLATION;
@@ -58,7 +58,7 @@ constexpr std::array RAW_GRAPH_RULES = {
                             return "";
                         }},
     RawNetlistGraphRule{.rule_name = "Circuit contains input",
-                        .rule = [](RawNetlist const &netlist) -> RuleViolationResult {
+                        .rule = [](Netlist const &netlist) -> RuleViolationResult {
                             for (auto v : pair_to_iter(boost::vertices(netlist))) {
                                 if (netlist[v].kind == NET &&
                                     netlist[v].value.net_value == CIR_INPUT) {
@@ -71,8 +71,8 @@ constexpr std::array RAW_GRAPH_RULES = {
 
 constexpr std::array RAW_VERTEX_RULES = {
     RawNetlistVertexRule{
-        .rule_name = "Opamp supply plus must be V_HIGH or unconnectd",
-        .rule = [](RawNetlist const &netlist, RawVert v) -> RuleViolationResult {
+        .rule_name = "Opamp supply plus must be V_HIGH or unconnected",
+        .rule = [](Netlist const &netlist, NetlistVertex const *v) -> RuleViolationResult {
             if (netlist[v].kind != OPAMP)
                 return NO_VIOLATION;
 
@@ -92,8 +92,8 @@ constexpr std::array RAW_VERTEX_RULES = {
         },
     },
     RawNetlistVertexRule{
-        .rule_name = "Opamp supply minus must be V_NEG or unconnectd",
-        .rule = [](RawNetlist const &netlist, RawVert v) -> RuleViolationResult {
+        .rule_name = "Opamp supply minus must be V_NEG or unconnected",
+        .rule = [](Netlist const &netlist, NetlistVertex const *v) -> RuleViolationResult {
             if (netlist[v].kind != OPAMP)
                 return NO_VIOLATION;
 
@@ -114,7 +114,7 @@ constexpr std::array RAW_VERTEX_RULES = {
     },
     RawNetlistVertexRule{
         .rule_name = "Opamp output must not drive a voltage",
-        .rule = [](RawNetlist const &netlist, RawVert v) -> RuleViolationResult {
+        .rule = [](Netlist const &netlist, NetlistVertex const *v) -> RuleViolationResult {
             if (netlist[v].kind != OPAMP)
                 return NO_VIOLATION;
 
@@ -137,7 +137,7 @@ constexpr std::array RAW_VERTEX_RULES = {
     },
     RawNetlistVertexRule{
         .rule_name = "Components should not be bypassed",
-        .rule = [](RawNetlist const &netlist, RawVert v) -> RuleViolationResult {
+        .rule = [](Netlist const &netlist, NetlistVertex const *v) -> RuleViolationResult {
             if (netlist[v].kind == R || netlist[v].kind == C || netlist[v].kind == DIODE ||
                 netlist[v].kind == CELL_BUFFER) {
             } else {
@@ -164,7 +164,7 @@ constexpr std::array RAW_VERTEX_RULES = {
     },
     RawNetlistVertexRule{
         .rule_name = "Circuit output must be driven by only a buffer",
-        .rule = [](RawNetlist const &netlist, RawVert v) -> RuleViolationResult {
+        .rule = [](Netlist const &netlist, NetlistVertex const *v) -> RuleViolationResult {
             if (netlist[v].kind != NET || netlist[v].value.net_value != CIR_OUTPUT) {
                 return NO_VIOLATION;
             }
@@ -201,7 +201,7 @@ constexpr std::array RAW_VERTEX_RULES = {
     },
     RawNetlistVertexRule{
         .rule_name = "Buffer must not drive voltage",
-        .rule = [](RawNetlist const &netlist, RawVert v) -> RuleViolationResult {
+        .rule = [](Netlist const &netlist, NetlistVertex const *v) -> RuleViolationResult {
             if (netlist[v].kind != CELL_BUFFER)
                 return NO_VIOLATION;
 
@@ -225,7 +225,7 @@ constexpr std::array RAW_VERTEX_RULES = {
     },
     RawNetlistVertexRule{
         .rule_name = "Capacitors must be supported values",
-        .rule = [](RawNetlist const &netlist, RawVert v) -> RuleViolationResult {
+        .rule = [](Netlist const &netlist, NetlistVertex const *v) -> RuleViolationResult {
             if (netlist[v].kind != C)
                 return NO_VIOLATION;
 

@@ -147,6 +147,14 @@ template <typename T, size_t AMT> class SmallVec {
         set_size_no_relocate(size() + 1);
     }
 
+    void push_back(T const &other) {
+        ensure_capacity(size() + 1);
+
+        new (begin() + size()) T(other);
+
+        set_size_no_relocate(size() + 1);
+    }
+
     T const &operator[](size_t i) const {
         ASSERT(i < static_cast<size_t>(size()), "Index out of bounds");
         return *(begin() + i);
