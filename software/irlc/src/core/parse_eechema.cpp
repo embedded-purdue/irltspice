@@ -1,16 +1,16 @@
-#include "core/netlist.hpp"
-#include "core/parse.hpp"
 #include <memory>
 #include <stdexcept>
-#include <variant>
+
+#include "core/parse.hpp"
+#include "irl_netlist.hpp"
 
 using namespace std;
+using namespace irl;
 
 bool EeschemaParser::matches_filename(const string &filename) {
     return filename.ends_with(".xml");
 };
 
-unique_ptr<RawNetlist> EeschemaParser::try_parse(const std::string &filename,
-                                                 string_view in) const {
+unique_ptr<Netlist> EeschemaParser::try_parse(const std::string &filename, string_view in) const {
     throw runtime_error("Eeschema parsing not yet implemented.");
 }
