@@ -21,6 +21,18 @@ set( PROTO_DIR ${IRLTSPICE_DIR}/proto )
 set( GEN_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/gen_include )
 set( GEN_PROTOBUF_SRC_DIR ${GEN_INCLUDE_DIR}/protobuf )
 
+# =================
+# Developer configs
+# =================
+# clangd has no include paths for headers that are not part of a translation
+# unit in compile_commands.json (e.g. when you open an .hpp directly). Generate
+# a .clangd with fallback flags for those files. Here because it needs absolute paths.
+configure_file(
+    ${IRLC_DIR}/cmake/clangd.in
+    ${IRLC_DIR}/.clangd
+    @ONLY
+)
+
 # ============
 # Dependencies
 # ============
