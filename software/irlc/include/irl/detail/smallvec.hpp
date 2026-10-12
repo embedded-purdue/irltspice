@@ -4,7 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 
-#include "detail/util.hpp"
+#include <irl/detail/util.hpp>
 
 namespace irl {
 namespace detail {

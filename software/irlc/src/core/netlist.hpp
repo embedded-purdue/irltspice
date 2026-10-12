@@ -9,7 +9,7 @@
 #include <cstddef>
 #include <span>
 
-#include "irl_netlist.hpp"
+#include "irl/netlist.hpp"
 #include "util/macros.hpp"
 
 // Netlists are represented as a bipartite graph, where the left side

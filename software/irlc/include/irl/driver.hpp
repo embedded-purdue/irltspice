@@ -7,7 +7,7 @@
 #include <string_view>
 #include <variant>
 
-#include "irl_netlist.hpp"
+#include <irl/netlist.hpp>
 
 namespace irl {
 
