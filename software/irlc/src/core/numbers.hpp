@@ -1,9 +1,10 @@
 #pragma once
 
-#include "util/macros.hpp"
 #include <cstdint>
 #include <ostream>
 #include <string_view>
+
+#include "util/macros.hpp"
 
 // The value of a component in pico-somethings
 typedef struct val_pico {

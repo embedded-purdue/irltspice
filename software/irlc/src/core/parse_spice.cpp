@@ -15,7 +15,7 @@
 #include "core/netlist.hpp"
 #include "core/parse.hpp"
 #include "detail/util.hpp"
-#include "fast_float/parse_number.h"
+#include "fast_float/fast_float.h"
 #include "irl_netlist.hpp"
 
 using namespace std;
