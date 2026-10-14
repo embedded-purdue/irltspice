@@ -4,8 +4,6 @@
 // https://www.boost.org/doc/libs/latest/libs/graph/doc/table_of_contents.html
 
 #include <array>
-#include <boost/graph/adjacency_list.hpp>
-#include <boost/graph/graph_selectors.hpp>
 #include <cstddef>
 #include <span>
 
@@ -79,7 +77,7 @@ typedef struct _RecognizedComponent {
 
 // Bullshit for listing parseable components
 // =========================================
-// I really should not have done this, but I realllly wanted it comptime w/o manually naming the
+// I really should not have done this, but I really wanted it comptime w/o manually naming the
 // arrays. Static members of constexpr lambdas being c++23 sucks :(
 
 #define COMPONENT(KIND, NAME, NUMERIC, PFXS, VALS, PINS)                                           \

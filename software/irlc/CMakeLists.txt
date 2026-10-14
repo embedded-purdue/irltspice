@@ -71,7 +71,7 @@ CPMAddPackage(
 include("${protobuf_BINARY_DIR}/cmake/protobuf/protobuf-generate.cmake")
 
 # fast_float
-# Due to macos requireing 26.0 for std::from_chars with doubles, we depend on fast_float, which provides a near-identical api in header-only form
+# Due to macos requiring 26.0 for std::from_chars with doubles, we depend on fast_float, which provides a near-identical api in header-only form
 CPMAddPackage(
   NAME fast_float
   GITHUB_REPOSITORY "fastfloat/fast_float"
@@ -87,58 +87,73 @@ set(PROTOS
     ${PROTO_DIR}/command.proto
 )
 
-# Lib (separated for testing and such)
-add_library(libirlc) 
-set_target_properties(libirlc PROPERTIES OUTPUT_NAME irlc)
-target_sources(libirlc 
-    PRIVATE 
-        ${IRLC_DIR}/src/core/compiler.cpp
-        ${IRLC_DIR}/src/core/route.cpp
-        ${IRLC_DIR}/src/core/parse_spice.cpp
-        ${IRLC_DIR}/src/core/parse_eechema.cpp
-        ${IRLC_DIR}/src/core/verify.cpp
-        ${IRLC_DIR}/src/core/debug.cpp
-        ${IRLC_DIR}/src/core/board_info.cpp
-        ${IRLC_DIR}/src/core/numbers.cpp
-        ${IRLC_DIR}/src/core/emit.cpp
+# The project is split into three internal pieces plus one distributable. 
+# Internal: 
+#   - irlcore
+#   - irlcompiler
+#   - irldriver
+# Distributable: 
+#   - libirlc.a
+
+# `target_link_libraries` on an OBJECT library adds its objects to the consumer
+# (and, for a STATIC library, into the archive)
+
+# --- irlcore : shared netlist representation, commands, and misc datastructures ---
+add_library(irlcore OBJECT
+    ${IRLC_DIR}/src/irl/core/netlist.cpp
+    ${IRLC_DIR}/src/irl/core/debug.cpp
 )
-target_include_directories(libirlc 
-    PUBLIC 
-        ${IRLC_DIR}/include/
-    PRIVATE
-        ${GEN_PROTOBUF_SRC_DIR}
-        ${IRLC_DIR}/src/
+target_include_directories(irlcore 
+    PUBLIC  ${IRLC_DIR}/include
+    PRIVATE ${IRLC_DIR}/src
 )
-target_link_libraries(libirlc 
-    PRIVATE 
-        Boost::graph
-        Boost::asio
-        Boost::outcome
-        protobuf::libprotobuf
-        fast_float
+
+# --- irlcompiler : stateless parsing/verification/routing. Depends on netlist. ---
+add_library(irlcompiler OBJECT
+    ${IRLC_DIR}/src/irl/compiler.cpp
+    ${IRLC_DIR}/src/irl/compiler/parse_spice.cpp
+    ${IRLC_DIR}/src/irl/compiler/parse_eeschema.cpp
 )
+target_include_directories(irlcompiler
+    PUBLIC  ${IRLC_DIR}/include
+    PRIVATE ${IRLC_DIR}/src
+)
+target_link_libraries(irlcompiler PUBLIC irlcore fast_float)
+
+# --- irldriver : board communication + oscilloscope. Depends on netlist. ---
+add_library(irldriver OBJECT
+    ${IRLC_DIR}/src/irl/driver.cpp
+)
+target_include_directories(irldriver
+    PUBLIC ${IRLC_DIR}/include
+    PRIVATE ${IRLC_DIR}/src
+)
+target_link_libraries(irldriver PUBLIC irlcore protobuf::libprotobuf Boost::asio Boost::outcome)
 
 make_directory(${GEN_PROTOBUF_SRC_DIR})
 protobuf_generate(
-    TARGET libirlc
+    TARGET irldriver
     LANGUAGE cpp
     PROTOS ${PROTOS}
     IMPORT_DIRS ${PROTO_DIR}
     PROTOC_OUT_DIR ${GEN_PROTOBUF_SRC_DIR}
 )
+target_include_directories(irldriver PRIVATE ${GEN_PROTOBUF_SRC_DIR})
 
+# --- libirlc.a : the single artifact end users link. ---
+add_library(irlc STATIC)
+target_include_directories(irlc PUBLIC ${IRLC_DIR}/include)
+target_link_libraries(irlc PRIVATE irlcore irlcompiler irldriver)
+# Static archives do not carry their dependencies, so re-expose the external
+# ones the packed objects need.
+target_link_libraries(irlc PUBLIC protobuf::libprotobuf Boost::asio Boost::outcome fast_float)
 
-# Actual compiler
-add_executable(irlc)
-target_sources(irlc 
-    PRIVATE 
-        ${IRLC_DIR}/src/main.cpp
-)
-target_link_libraries(irlc 
-    PRIVATE 
-        libirlc 
-        Boost::program_options
-)
+# Legacy single-binary CLI. `src/main.cpp` still pulls in the old `src/core`
+# compiler and does not build against the split yet. Re-enable once the
+# compiler/driver implementations land.
+# add_executable(irlc-cli)
+# target_sources(irlc-cli PRIVATE ${IRLC_DIR}/src/main.cpp)
+# target_link_libraries(irlc-cli PRIVATE irlc Boost::program_options)
 
 # =======
 # Testing
