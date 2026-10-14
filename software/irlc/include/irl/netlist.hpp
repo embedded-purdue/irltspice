@@ -5,8 +5,10 @@
 #include <limits>
 #include <span>
 #include <string>
+#include <type_traits>
 #include <utility>
 
+#include <irl/detail/chunkedlist.hpp>
 #include <irl/detail/smallvec.hpp>
 #include <irl/detail/util.hpp>
 
@@ -40,11 +42,12 @@ union NetlistVertexValue {
         uint8_t childMotherId;
     } motherToMotherConnId;
     NoData empty;
+    void *freeNext;
 };
 
 // What kind of vertex this is
 // Each kind of vertex has a different associated value kind (see NetlistVertexValue)
-enum class NetlistVertexKind {
+enum class NetlistVertexKind : uint16_t {
 
 // X-Macro pattern
 // A name of a kind of vertex and which field of NetlistVertexValue is active for it
@@ -149,25 +152,19 @@ class NetlistEdge;
 // A vertex of the netlist
 // To construct, use Netlist::new_vertex
 class NetlistVertex {
-  public:
-    std::string mName;
-
   private:
     // Use 5 edges so all opamps can be stored in struct
     using EdgeList = detail::SmallVec<NetlistEdge *, 5>;
 
-    NetlistVertexValue mValue;
-    EdgeList mEdgeList;
-
+    EdgeList mEdgeList{};
+    std::string mName{};
+    NetlistVertexValue mValue{.empty{}};
+    // Chunkable<NetlistVertex> uses the max value as a tombstone.
     NetlistVertexKind mKind;
 
     // If you do this you guarantee assert the the active field of val matches kind
     NetlistVertex(std::string &&name, NetlistVertexKind kind, NetlistVertexValue &&val)
-        : mName(std::move(name)), mValue(std::move(val)), mEdgeList{}, mKind(kind) {}
-
-    // Hard to impl as constructors' template params can't be specified
-    // template <NetlistVertexKind newKind>
-    // NetlistVertex(std::string &&name, VertKindInfo<newKind>::AssociatedData &&data);
+        : mEdgeList{}, mName(std::move(name)), mValue(std::move(val)), mKind(kind) {}
 
   public:
     inline NetlistVertexKind get_kind() const { return mKind; }
@@ -192,6 +189,7 @@ class NetlistVertex {
 
     friend class Netlist;
     friend class NetlistEdge;
+    friend class detail::Chunkable<NetlistVertex>;
 };
 
 // An edge of the netlist
@@ -200,99 +198,120 @@ class NetlistVertex {
 class NetlistEdge {
   public:
     // The component this edge is connected to
-    NetlistVertex *mComponent;
+    NetlistVertex *mComponent = nullptr;
     // The net this edge is connected to
-    NetlistVertex *mNet;
+    NetlistVertex *mNet = nullptr;
     // Only meaningful for topologies
-    double mTraceLength;
+    double mTraceLength = std::numeric_limits<double>::signaling_NaN();
 
   private:
-    NetlistEdgeValue mValue;
+    NetlistEdgeValue mValue{.empty{}};
     NetlistEdgeKind mKind;
 
     NetlistEdge(NetlistVertex *component, NetlistVertex *net, NetlistEdgeKind kind,
                 NetlistEdgeValue &&val)
-        : mComponent(component), mNet(net),
-          mTraceLength(std::numeric_limits<double>::signaling_NaN()), mValue(std::move(val)),
-          mKind(kind) {}
+        : mComponent(component), mNet(net), mValue(std::move(val)), mKind(kind) {}
 
   public:
     inline NetlistEdgeKind get_kind() const { return mKind; }
     // If this vertex holds kind, return a pointer to its associated union field in this struct
     // Otherwise returns nullptr
     template <NetlistEdgeKind kind> EdgeKindInfo<kind>::AssociatedData const *get_data_if() const;
+    template <NetlistEdgeKind kind> EdgeKindInfo<kind>::AssociatedData *get_data_if();
 
     friend class Netlist;
     friend class NetlistVertex;
+    friend class detail::Chunkable<NetlistEdge>;
 };
 
 class Netlist {
-    struct VertexStore;
-    struct EdgeStore;
+    static constexpr std::size_t VERT_CHUNK_SIZE = 20;
+    static constexpr std::size_t EDGE_CHUNK_SIZE = 20;
+    using VertexList = detail::ChunkedList<NetlistVertex, VERT_CHUNK_SIZE>;
+    using EdgeList = detail::ChunkedList<NetlistEdge, EDGE_CHUNK_SIZE>;
+    VertexList mVertices;
+    EdgeList mEdges;
 
-    VertexStore *mVerticies;
-    EdgeStore *mEdges;
-
-    // Allocates a vertex
-    // Points to uninitialized memory
-    // Resource acquisition is NOT initialization
-    NetlistVertex *alloc_vertex();
-    // Allocates an edge
-    // Points to uninitialized memory
-    // Resource acquisition is NOT initialization
-    NetlistEdge *alloc_edge();
+    // Allocates a vertex: raw storage; the caller placement-news.
+    // Resource acquisition is NOT initialization.
+    NetlistVertex *alloc_vertex() { return mVertices.allocate(); }
+    // Allocates an edge: raw storage; the caller placement-news.
+    // Resource acquisition is NOT initialization.
+    NetlistEdge *alloc_edge() { return mEdges.allocate(); }
 
   public:
     // Create a new vertex in the netlist
     template <NetlistVertexKind newKind>
-    NetlistVertex *new_vertex(std::string &&name, VertKindInfo<newKind>::AssociatedData &&data) {
-        NetlistVertex *loc = alloc_vertex();
+    NetlistVertex *new_vertex(std::string &&name, VertKindInfo<newKind>::AssociatedData &&data);
 
-        NetlistVertexValue val;
-        new (&(val.*VertKindInfo<newKind>::AssociatedField))
-            VertKindInfo<newKind>::AssociatedData{std::move(data)};
-
-        new (loc) NetlistVertex(std::move(name), newKind, std::move(val));
-
-        return loc;
-    };
-
+    // Connect to vertices
     template <NetlistEdgeKind KIND>
     NetlistEdge *connect(NetlistVertex *v1, NetlistVertex *v2,
-                         EdgeKindInfo<KIND>::AssociatedData &&data) {
+                         EdgeKindInfo<KIND>::AssociatedData &&data);
 
-        detail::ASSERT(v1 != nullptr && v2 != nullptr, "Attempted to connect to a null vertex.");
+    // Iteration:
 
-        NetlistVertex *component;
-        NetlistVertex *net;
+    using VertexIter = VertexList::Iter;
+    using ConstVertexIter = VertexList::ConstIter;
+    using EdgeIter = EdgeList::Iter;
+    using ConstEdgeIter = EdgeList::ConstIter;
 
-        if (v1->get_kind() == NetlistVertexKind::NET) {
-            detail::ASSERT(v2->get_kind() != NetlistVertexKind::NET,
-                           "Attempted to connect two nets.");
-            net = v1;
-            component = v2;
-        } else {
-            detail::ASSERT(v2->get_kind() == NetlistVertexKind::NET,
-                           "Attempted to connect two components. Use a net.");
-            net = v2;
-            component = v1;
-        }
+    ConstVertexIter vertices_begin() const { return mVertices.begin(); }
+    VertexIter vertices_begin() { return mVertices.begin(); }
+    ConstEdgeIter edges_begin() const { return mEdges.begin(); }
+    EdgeIter edges_begin() { return mEdges.begin(); }
 
-        detail::ASSERT(component->get_kind() == EdgeKindInfo<KIND>::AssociatedVertKind,
-                       "Attempted to connect an edge to a non-matching component.");
+    std::pair<ConstVertexIter, ConstVertexIter> vertices() const {
+        return {mVertices.begin(), mVertices.end()};
+    }
+    std::pair<VertexIter, VertexIter> vertices() { return {mVertices.begin(), mVertices.end()}; }
 
-        NetlistEdgeValue val;
-        new (&(val.*EdgeKindInfo<KIND>::AssociatedField))
-            EdgeKindInfo<KIND>::AssociatedData{std::move(data)};
+    std::pair<ConstEdgeIter, ConstEdgeIter> edges() const { return {mEdges.begin(), mEdges.end()}; }
+    std::pair<EdgeIter, EdgeIter> edges() { return {mEdges.begin(), mEdges.end()}; }
+};
 
-        NetlistEdge *loc = alloc_edge();
-        new (loc) NetlistEdge(component, net, KIND, std::move(val));
+namespace detail {
+// Free list lives in NetlistVertexValue::freeNext; the tombstone is mKind.
+// Both hooks must work on uninitialized storage (see chunkedlist.hpp).
+template <> class Chunkable<NetlistVertex> {
+    template <typename, std::size_t, typename> friend class ChunkedList;
 
-        net->mEdgeList.push_back(loc);
-        component->mEdgeList.push_back(loc);
+  public:
+    using VertKindInt = std::underlying_type_t<NetlistVertexKind>;
+    static constexpr VertKindInt KIND_DEAD = std::numeric_limits<VertKindInt>::max();
 
-        return loc;
+  private:
+    static bool is_dead(const NetlistVertex &v) {
+        return static_cast<VertKindInt>(v.mKind) == KIND_DEAD;
+    }
+    static void mark_dead(NetlistVertex &v) { v.mKind = static_cast<NetlistVertexKind>(KIND_DEAD); }
+    static NetlistVertex *get_freelist(const NetlistVertex &v) {
+        return static_cast<NetlistVertex *>(v.mValue.freeNext);
+    }
+    static void set_freelist(NetlistVertex &v, NetlistVertex *next) { v.mValue.freeNext = next; }
+};
+
+// The component/net pointers are meaningless while an edge is free, so we reuse
+// mComponent to thread the free list. The tombstone is mKind.
+template <> class Chunkable<NetlistEdge> {
+    template <typename, std::size_t, typename> friend class ChunkedList;
+
+  public:
+    using EdgeKindInt = std::underlying_type_t<NetlistEdgeKind>;
+    static constexpr EdgeKindInt KIND_DEAD = std::numeric_limits<EdgeKindInt>::max();
+
+  private:
+    static bool is_dead(const NetlistEdge &e) {
+        return static_cast<EdgeKindInt>(e.mKind) == KIND_DEAD;
+    }
+    static void mark_dead(NetlistEdge &e) { e.mKind = static_cast<NetlistEdgeKind>(KIND_DEAD); }
+    static NetlistEdge *get_freelist(const NetlistEdge &e) {
+        return reinterpret_cast<NetlistEdge *>(e.mComponent);
+    }
+    static void set_freelist(NetlistEdge &e, NetlistEdge *next) {
+        e.mComponent = reinterpret_cast<NetlistVertex *>(next);
     }
 };
+} // namespace detail
 
 } // namespace irl
