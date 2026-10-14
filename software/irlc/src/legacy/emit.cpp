@@ -1,17 +1,11 @@
 #include "core/emit.hpp"
-#include "core/board_info.hpp"
-#include "core/route.hpp"
-#include "extern/uart_bytes.h"
+
+#include <boost/asio.hpp>
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/error.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/read.hpp>
 #include <boost/system/detail/errc.hpp>
-
-#include <boost/asio.hpp>
-
-#include "command.pb.h"
-
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
@@ -25,6 +19,11 @@
 #include <utility>
 #include <variant>
 #include <vector>
+
+#include "command.pb.h"
+#include "core/board_info.hpp"
+#include "core/route.hpp"
+#include "extern/uart_bytes.h"
 
 using namespace boost;
 using namespace std;
