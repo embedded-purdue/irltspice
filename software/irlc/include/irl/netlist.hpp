@@ -5,6 +5,7 @@
 #include <limits>
 #include <span>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -167,7 +168,8 @@ class NetlistVertex {
         : mEdgeList{}, mName(std::move(name)), mValue(std::move(val)), mKind(kind) {}
 
   public:
-    inline NetlistVertexKind get_kind() const { return mKind; }
+    inline NetlistVertexKind kind() const { return mKind; }
+    inline std::string_view name() const { return mName; }
 
     // If this vertex holds kind, return a pointer to its associated union field in this struct
     // Otherwise returns nullptr
@@ -213,7 +215,8 @@ class NetlistEdge {
         : mComponent(component), mNet(net), mValue(std::move(val)), mKind(kind) {}
 
   public:
-    inline NetlistEdgeKind get_kind() const { return mKind; }
+    inline NetlistEdgeKind kind() const { return mKind; }
+
     // If this vertex holds kind, return a pointer to its associated union field in this struct
     // Otherwise returns nullptr
     template <NetlistEdgeKind kind> EdgeKindInfo<kind>::AssociatedData const *get_data_if() const;
