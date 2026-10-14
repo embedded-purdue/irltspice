@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
-#include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <system_error>
@@ -11,18 +11,20 @@
 #include <utility>
 #include <vector>
 
-#include "core/debug.hpp"
-#include "core/netlist.hpp"
-#include "core/parse.hpp"
+#include <irl/compiler.hpp>
+#include <irl/detail/util.hpp>
+#include <irl/netlist.hpp>
+
 #include "fast_float/fast_float.h"
-#include "irl/detail/util.hpp"
-#include "irl/netlist.hpp"
+#include "irl/compiler/parse.hpp"
+#include "irl/compiler/parse_info.hpp"
+#include "irl/core/debug.hpp"
 
 using namespace std;
 using namespace irl;
 using namespace irl::detail;
 
-bool SpiceParser::matches_filename(const string &filename) {
+bool SpiceParser::matches_filename(std::string_view filename) {
     return filename.ends_with(".spice") || filename.ends_with(".sp") || filename.ends_with(".cir");
 };
 
@@ -175,24 +177,37 @@ struct Tokenizer {
 typedef unordered_map<string_view, NetlistVertex *> NetNameMap;
 typedef unordered_map<string_view, string_view> ModelMap;
 
-static inline void assert_net_count(int num, string_view reference, const string &filename,
-                                    const vector<Token *> &line) {
-    if (line.size() != num + 2) {
-        throw ParseException::create(ParseException::PARSE_ERROR,
-                                     string("Component: ") + string(reference) +
-                                         ", connected to bad number of nets. Expected: " +
-                                         to_string(num) + ", got: " + to_string(line.size() - 2),
-                                     filename, line[0]->line_number);
-    }
+static inline void add_err(vector<ParseError> &errs, ParseError &&e) {
+    errs.emplace_back(std::move(e));
 }
 
-static inline uint32_t parse_custom_id(string_view reference, const string &filename,
+static inline bool net_count_good(vector<ParseError> errs, int num, string_view reference,
+                                  string_view file_name, const vector<Token *> &line) {
+    if (line.size() != num + 2) {
+        add_err(errs,
+                ParseError{
+                    .message = string("Component: ") + string(reference) +
+                               ", connected to bad number of nets. Expected: " + to_string(num) +
+                               ", got: " + to_string(line.size() - 2),
+                    .problematic_region{(const char *)line[0]->underlying.end(),
+                                        (const char *)line[line.size() - 1]->underlying.begin()},
+                    .file_name = file_name,
+                    .lines_begin = line[0]->line_number,
+                    .lines_end = line[line.size() - 1]->line_number,
+                });
+        return false;
+    }
+    return true;
+}
+
+static inline uint32_t parse_custom_id(string_view reference, string_view filename,
                                        const vector<Token *> &line) {
     return -1;
 }
 
-static inline double parse_spice_number(string_view reference, const string &filename,
-                                        const vector<Token *> &line) {
+static inline optional<double> parse_spice_number(vector<ParseError> &errs, string_view reference,
+                                                  string_view filename,
+                                                  const vector<Token *> &line) {
     Token *val_token = line[line.size() - 1];
 
     string_view num = val_token->underlying;
@@ -220,18 +235,28 @@ static inline double parse_spice_number(string_view reference, const string &fil
                 }
             }
             if (multiplier == 1) {
-                throw ParseException::create(ParseException::PARSE_ERROR,
-                                             string("Component: ") + string(reference) +
-                                                 " , has bad value. Unrecognizes suffix: \"" +
-                                                 string(suffix) + "\"",
-                                             filename, val_token->line_number);
+                add_err(errs, ParseError{
+                                  .message = string("Component: ") + string(reference) +
+                                             " , has bad value. Unrecognizes suffix: \"" +
+                                             string(suffix) + "\"",
+                                  .problematic_region = suffix,
+                                  .file_name = filename,
+                                  .lines_begin = val_token->line_number,
+                                  .lines_end = val_token->line_number,
+                              });
+                return nullopt;
             }
         }
     } else {
-        throw ParseException::create(ParseException::PARSE_ERROR,
-                                     string("Component: ") + string(reference) +
-                                         " , has bad value. Couldn't parse number",
-                                     filename, val_token->line_number);
+        add_err(errs, ParseError{
+                          .message = string("Component: ") + string(reference) +
+                                     " , has bad value. Couldn't parse number",
+                          .problematic_region = val_token->underlying,
+                          .file_name = filename,
+                          .lines_begin = val_token->line_number,
+                          .lines_end = val_token->line_number,
+                      });
+        return nullopt;
     }
 
     return value;
@@ -301,13 +326,16 @@ static void connect_valueless(Netlist &netlist, NetlistVertex *v1, NetlistVertex
 #undef EDGE_KIND
 }
 
-void add_element(Netlist &netlist, NetNameMap &netnames, ModelMap &models,
-                 const vector<Token *> &line, const string &filename) {
+void add_element(Netlist &netlist, vector<ParseError> &errs, NetNameMap &netnames, ModelMap &models,
+                 const vector<Token *> &line, string_view filename) {
     if (line.size() < 2) {
-        throw ParseException::create(
-            ParseException::PARSE_ERROR,
-            "Malformed component line. Must have at least a reference designator and a value",
-            filename, line[0]->line_number);
+        add_err(errs, ParseError{.message = "Malformed component line. Must have at least a "
+                                            "reference designator and a value",
+                                 .problematic_region = line[0]->underlying,
+                                 .file_name = filename,
+                                 .lines_begin = line[0]->line_number,
+                                 .lines_end = line[0]->line_number});
+        return;
     }
 
     string_view reference = line[0]->underlying;
@@ -320,10 +348,13 @@ void add_element(Netlist &netlist, NetNameMap &netnames, ModelMap &models,
     auto result = fast_float::from_chars(first_num, end_ptr, reference_num);
     if (reference_kind.length() == 0 || result.ec != std::errc{} || result.ptr != end_ptr ||
         first_num == end_ptr) {
-        throw ParseException::create(ParseException::PARSE_ERROR,
-                                     "Malformed reference designator: " + string(reference) +
-                                         ". Expected to be of form TYPE1234",
-                                     filename, line[0]->line_number);
+        add_err(errs, ParseError{.message = "Malformed reference designator: " + string(reference) +
+                                            ". Expected to be of form TYPE1234",
+                                 .problematic_region = reference,
+                                 .file_name = filename,
+                                 .lines_begin = line[0]->line_number,
+                                 .lines_end = line[0]->line_number});
+        return;
     }
 
     string_view value = line[line.size() - 1]->underlying;
@@ -366,15 +397,20 @@ void add_element(Netlist &netlist, NetNameMap &netnames, ModelMap &models,
 
         found_match = true;
 
-        assert_net_count(recognized.pins.size(), reference, filename, line);
+        if (!net_count_good(errs, recognized.pins.size(), reference, filename, line)) {
+            return;
+        }
+
         NetlistVertex *vert;
         if (recognized.component_kind == CUSTOM) {
             uint32_t customid = parse_custom_id(reference, filename, line);
             vert = netlist.new_vertex<CUSTOM>(string(reference), std::move(customid));
-        }
-        if (recognized.numeric_value) {
-            double val = parse_spice_number(reference, filename, line);
-            vert = create_numeric_node(netlist, recognized.component_kind, string(reference), val);
+        } else if (recognized.numeric_value) {
+            optional<double> val = parse_spice_number(errs, reference, filename, line);
+            if (!val.has_value()) {
+                return;
+            }
+            vert = create_numeric_node(netlist, recognized.component_kind, string(reference), *val);
         } else {
             vert = create_valuelesss_node(netlist, recognized.component_kind, string(reference));
         }
@@ -391,24 +427,33 @@ void add_element(Netlist &netlist, NetNameMap &netnames, ModelMap &models,
 
     if (!found_match) {
         if (!any_ref_found)
-            throw ParseException::create(ParseException::PARSE_ERROR,
-                                         "Unknown reference designator kind/letter used: " +
-                                             string(reference),
-                                         filename, line[0]->line_number);
+            add_err(errs, ParseError{
+                              .message = "Unknown reference designator kind/letter used: " +
+                                         string(reference),
+                              .problematic_region = line[0]->underlying,
+                              .file_name = filename,
+                              .lines_begin = line[0]->line_number,
+                              .lines_end = line[0]->line_number,
+                          });
         else
-            throw ParseException::create(
-                ParseException::PARSE_ERROR,
-                string("Unknown component value : ") + string(value) +
-                    ", used for reference designator: " + string(reference),
-                filename, line[0]->line_number);
+            add_err(errs, ParseError{
+                              .message = string("Unknown component value : ") + string(value) +
+                                         ", used for reference designator: " + string(reference),
+                              .problematic_region = value,
+                              .file_name = filename,
+                              .lines_begin = line[line.size() - 1]->line_number,
+                              .lines_end = line[line.size() - 1]->line_number,
+                          });
     }
 }
 
-unique_ptr<Netlist> SpiceParser::try_parse(const string &filename, string_view in) const {
+ParseResult SpiceParser::try_parse(std::string_view file_contents,
+                                   std::string_view file_name) const {
 
+    vector<ParseError> errors;
     unique_ptr<Netlist> netlist(new Netlist);
 
-    Tokenizer tokenizer(in);
+    Tokenizer tokenizer(file_contents);
 
     vector<Token> tokens{};
     Token token;
@@ -417,10 +462,10 @@ unique_ptr<Netlist> SpiceParser::try_parse(const string &filename, string_view i
         tokens.push_back(token);
     } while (token.kind != END_OF_FILE);
 
-    if (compiler.opts.should_verbose_lex()) {
+    if (mOpts.should_verbose_lex) {
         for (Token &tok : tokens) {
-            compiler.log_fd << "Kind: " << tok.kind << ", Line: " << tok.line_number << ", Val: ["
-                            << tok.underlying << "]\n";
+            mOpts.log_fd << "Kind: " << tok.kind << ", Line: " << tok.line_number << ", Val: ["
+                         << tok.underlying << "]\n";
         }
     }
 
@@ -438,11 +483,17 @@ unique_ptr<Netlist> SpiceParser::try_parse(const string &filename, string_view i
         if (tok->kind == END_OF_FILE)
             break;
 
+        // If we get a bad token, just skip it
         if (tok->kind != NORMAL) {
-            throw ParseException::create(ParseException::PARSE_ERROR,
-                                         string("Unexpected token: ") + get_name(tok->kind) +
-                                             ", Expected: NORMAL",
-                                         filename, tok->line_number);
+            add_err(errors,
+                    ParseError{.message = string("Unexpected token: ") + get_name(tok->kind) +
+                                          ", Expected: NORMAL. Skipping...",
+                               .problematic_region = tok->underlying,
+                               .file_name = file_name,
+                               .lines_begin = tok->line_number,
+                               .lines_end = tok->line_number});
+            tok++;
+            continue;
         }
 
         bool should_continue;
@@ -457,35 +508,49 @@ unique_ptr<Netlist> SpiceParser::try_parse(const string &filename, string_view i
             }
         } while (should_continue);
 
-        if (compiler.opts.should_verbose_parse()) {
-            compiler.log_fd << "Line contains: [ ";
+        if (mOpts.should_verbose_parse) {
+            mOpts.log_fd << "Line contains: [ ";
             for (const Token *t : line) {
-                compiler.log_fd << '\'' << t->underlying << "', ";
+                mOpts.log_fd << '\'' << t->underlying << "', ";
             }
-            compiler.log_fd << " ]\n";
+            mOpts.log_fd << " ]\n";
         }
 
         if (line[0]->underlying[0] == '.') {
             string_view cmd = string_view(&line[0]->underlying[1], line[0]->underlying.size() - 1);
-            if (compiler.opts.should_verbose_parse())
-                compiler.log_fd << "Line is a dot cmd: " << cmd << "\n";
+            if (mOpts.should_verbose_parse)
+                mOpts.log_fd << "Line is a dot cmd: " << cmd << "\n";
             if (cmd == "model" && line.size() == 3) {
-                if (compiler.opts.should_verbose_parse())
-                    compiler.log_fd << "    Model command!\n";
+                if (mOpts.should_verbose_parse)
+                    mOpts.log_fd << "    Model command!\n";
                 models[line[1]->underlying] = line[2]->underlying;
             } else {
-                if (compiler.opts.should_verbose_parse())
-                    compiler.log_fd << "    Unknown command. Skipping.\n";
+                if (mOpts.should_verbose_parse)
+                    mOpts.log_fd << "    Unknown command. Skipping.\n";
             }
         } else {
-            add_element(*netlist, netnames, models, line, filename);
-            if (compiler.opts.should_verbose_parse())
-                compiler.log_fd << " Added!\n";
+            size_t error_len = errors.size();
+            add_element(*netlist, errors, netnames, models, line, file_name);
+            if (mOpts.should_verbose_parse) {
+                if (error_len == errors.size()) {
+                    mOpts.log_fd << " Added!\n";
+                } else {
+                    mOpts.log_fd << " ERRORS WHILE PARSING!!!\n    ";
+                    for (int i = error_len; i < errors.size(); i++) {
+                        mOpts.log_fd << errors[i].message;
+                    }
+                    mOpts.log_fd << "\n\n";
+                }
+            }
         }
     }
 
-    if (compiler.opts.should_verbose_parse())
-        debug_print_netlist(compiler.log_fd, *netlist);
+    if (mOpts.should_verbose_parse)
+        debug_print_netlist(mOpts.log_fd, *netlist);
 
-    return netlist;
+    return ParseResult{
+        .netlist{std::move(netlist)},
+        .failures{std::move(errors)},
+        .detectedKind = NetlistFileKind::SPICE,
+    };
 }

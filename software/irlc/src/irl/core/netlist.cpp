@@ -47,18 +47,18 @@ NetlistEdge *Netlist::connect(NetlistVertex *v1, NetlistVertex *v2,
     NetlistVertex *component;
     NetlistVertex *net;
 
-    if (v1->get_kind() == NetlistVertexKind::NET) {
-        detail::ASSERT(v2->get_kind() != NetlistVertexKind::NET, "Attempted to connect two nets.");
+    if (v1->kind() == NetlistVertexKind::NET) {
+        detail::ASSERT(v2->kind() != NetlistVertexKind::NET, "Attempted to connect two nets.");
         net = v1;
         component = v2;
     } else {
-        detail::ASSERT(v2->get_kind() == NetlistVertexKind::NET,
+        detail::ASSERT(v2->kind() == NetlistVertexKind::NET,
                        "Attempted to connect two components. Use a net.");
         net = v2;
         component = v1;
     }
 
-    detail::ASSERT(component->get_kind() == EdgeKindInfo<KIND>::AssociatedVertKind,
+    detail::ASSERT(component->kind() == EdgeKindInfo<KIND>::AssociatedVertKind,
                    "Attempted to connect an edge to a non-matching component.");
 
     NetlistEdgeValue val;
@@ -77,5 +77,62 @@ NetlistEdge *Netlist::connect(NetlistVertex *v1, NetlistVertex *v2,
 #define EDGE_KIND(NAME, ASSOCIATED_VERT_KIND, UNION_FIELD)                                         \
     template NetlistEdge *Netlist::connect<NetlistEdgeKind::NAME>(                                 \
         NetlistVertex *, NetlistVertex *, EdgeKindInfo<NetlistEdgeKind::NAME>::AssociatedData &&);
+EDGE_KINDS
+#undef EDGE_KIND
+
+// ==================
+// get_data_if bodies
+// ==================
+// A vertex/edge only "holds" the union field that matches its kind. These
+// return a pointer to that field when the kinds agree and nullptr otherwise,
+// which is what makes the kindsafe accessor work.
+
+template <NetlistVertexKind kind>
+typename VertKindInfo<kind>::AssociatedData *NetlistVertex::get_data_if() {
+    if (mKind != kind) {
+        return nullptr;
+    }
+    return &(mValue.*VertKindInfo<kind>::AssociatedField);
+}
+
+template <NetlistVertexKind kind>
+typename VertKindInfo<kind>::AssociatedData const *NetlistVertex::get_data_if() const {
+    if (mKind != kind) {
+        return nullptr;
+    }
+    return &(mValue.*VertKindInfo<kind>::AssociatedField);
+}
+
+// Explicitly instantiate
+#define VERT_KIND(NAME, UNION_FIELD)                                                               \
+    template VertKindInfo<NetlistVertexKind::NAME>::AssociatedData *                               \
+    NetlistVertex::get_data_if<NetlistVertexKind::NAME>();                                         \
+    template VertKindInfo<NetlistVertexKind::NAME>::AssociatedData const *                         \
+    NetlistVertex::get_data_if<NetlistVertexKind::NAME>() const;
+VERT_KINDS
+#undef VERT_KIND
+
+template <NetlistEdgeKind kind>
+typename EdgeKindInfo<kind>::AssociatedData *NetlistEdge::get_data_if() {
+    if (mKind != kind) {
+        return nullptr;
+    }
+    return &(mValue.*EdgeKindInfo<kind>::AssociatedField);
+}
+
+template <NetlistEdgeKind kind>
+typename EdgeKindInfo<kind>::AssociatedData const *NetlistEdge::get_data_if() const {
+    if (mKind != kind) {
+        return nullptr;
+    }
+    return &(mValue.*EdgeKindInfo<kind>::AssociatedField);
+}
+
+// Explicitly instantiate
+#define EDGE_KIND(NAME, ASSOCIATED_VERT_KIND, UNION_FIELD)                                         \
+    template EdgeKindInfo<NetlistEdgeKind::NAME>::AssociatedData *                                 \
+    NetlistEdge::get_data_if<NetlistEdgeKind::NAME>();                                             \
+    template EdgeKindInfo<NetlistEdgeKind::NAME>::AssociatedData const *                           \
+    NetlistEdge::get_data_if<NetlistEdgeKind::NAME>() const;
 EDGE_KINDS
 #undef EDGE_KIND
