@@ -1,6 +1,7 @@
 #include "hardware/spi.h"
 #include "hardware/gpio.h"
 #include "mcp_spi.h"
+#include "cd22m_test.h"
 
 int main(void) {
 
@@ -14,4 +15,6 @@ int main(void) {
     for (int i = 0; i < 3; i++) {
         set_resistance(25000 * i, &mcp_spi, i);
     }
+
+    cd22m_test();
 }
