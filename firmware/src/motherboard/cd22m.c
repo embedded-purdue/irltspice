@@ -4,7 +4,7 @@
 
 // Define this if the ax and ay pins are contiguous
 // so that `gpio_put_masked` can be used.
-#define CONTIGUOUS_PINS
+// #define CONTIGUOUS_PINS
 
 const int cd22m_pin_ax[4] = {};
 const int cd22m_pin_ay[3] = {};
@@ -53,14 +53,14 @@ void cd22m_set_switch(unsigned char ax, unsigned char ay, bool closed) {
 #endif
 
     gpio_put(cd22m_pin_strobe, false);
-    sleep_us(CD22M_PRESTROBE_DELAY_US);
+    sleep_ms(CD22M_PRESTROBE_DELAY_MS);
     gpio_put(cd22m_pin_strobe, true);
-    sleep_us(CD22M_POSTSTROBE_DELAY_US);
+    sleep_ms(CD22M_POSTSTROBE_DELAY_MS);
     gpio_put(cd22m_pin_strobe, false);
 }
 
 void cd22m_reset(void) {
     gpio_put(cd22m_pin_reset, true);
-    sleep_us(CD22M_RESET_DELAY_US);
+    sleep_ms(CD22M_RESET_DELAY_MS);
     gpio_put(cd22m_pin_reset, false);
 }

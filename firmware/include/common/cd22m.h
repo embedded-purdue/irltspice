@@ -10,9 +10,9 @@
 // DATA (1 (closed switch) or 0 (open switch)),
 // CS (Chip Select), and STROBE.
 
-#define CD22M_PRESTROBE_DELAY_US 1
-#define CD22M_POSTSTROBE_DELAY_US 1
-#define CD22M_RESET_DELAY_US 1
+#define CD22M_PRESTROBE_DELAY_MS 1
+#define CD22M_POSTSTROBE_DELAY_MS 1
+#define CD22M_RESET_DELAY_MS 1
 
 extern const int cd22m_pin_ax[4];
 extern const int cd22m_pin_ay[3];
