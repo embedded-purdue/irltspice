@@ -18,6 +18,7 @@ const int cd22m_pin_reset = 0;
 
 void cd22m_init(void) {
     // we don't need to do MX_GPIO_Init, because it's done in mx_init
+    HAL_GPIO_WritePin(GPIOx, cd22m_pin_cs, 1);
 }
 
 void cd22m_set_switch(unsigned char ax, unsigned char ay, bool closed) {

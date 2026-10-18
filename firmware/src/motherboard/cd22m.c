@@ -37,6 +37,8 @@ void cd22m_init(void) {
         gpio_set_dir(all_pins[i], GPIO_OUT);
     }
 #endif
+
+    gpio_put(cd22m_pin_cs, 1); // always set CS to high
 }
 
 void cd22m_set_switch(unsigned char ax, unsigned char ay, bool closed) {
