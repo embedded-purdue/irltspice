@@ -120,25 +120,29 @@ target_include_directories(irlcompiler
 )
 target_link_libraries(irlcompiler PUBLIC irlcore fast_float)
 
-# --- irldriver : board communication + oscilloscope. Depends on netlist. ---
-add_library(irldriver OBJECT
-    ${IRLC_DIR}/src/irl/driver.cpp
-)
-target_include_directories(irldriver
-    PUBLIC ${IRLC_DIR}/include
-    PRIVATE ${IRLC_DIR}/src
-)
-target_link_libraries(irldriver PUBLIC irlcore protobuf::libprotobuf Boost::asio Boost::outcome)
-
+# --- irlproto : generated protobuf wire code, shared by the driver and tests ---
 make_directory(${GEN_PROTOBUF_SRC_DIR})
 protobuf_generate(
-    TARGET irldriver
+    OUT_VAR IRLPROTO_SRCS
     LANGUAGE cpp
     PROTOS ${PROTOS}
     IMPORT_DIRS ${PROTO_DIR}
     PROTOC_OUT_DIR ${GEN_PROTOBUF_SRC_DIR}
 )
-target_include_directories(irldriver PRIVATE ${GEN_PROTOBUF_SRC_DIR})
+add_library(irlproto OBJECT ${IRLPROTO_SRCS})
+target_include_directories(irlproto PUBLIC ${GEN_PROTOBUF_SRC_DIR})
+target_link_libraries(irlproto PUBLIC protobuf::libprotobuf)
+
+# --- irldriver : board communication + oscilloscope. Depends on netlist. ---
+add_library(irldriver OBJECT
+    ${IRLC_DIR}/src/irl/driver.cpp
+    ${IRLC_DIR}/src/irl/driver/translate_protobuf.cpp
+)
+target_include_directories(irldriver
+    PUBLIC ${IRLC_DIR}/include
+    PRIVATE ${IRLC_DIR}/src
+)
+target_link_libraries(irldriver PUBLIC irlcore irlproto Boost::asio Boost::outcome)
 
 # --- libirlc.a : the single artifact end users link. ---
 add_library(irlc STATIC)

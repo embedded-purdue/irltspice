@@ -52,6 +52,34 @@ target_link_libraries(irlcompiler-tests
 
 add_test(NAME irlcompiler-tests COMMAND irlcompiler-tests)
 
+
+
+# Translation tests. translate_protobuf.cpp is recompiled here with field
+# tracking enabled, so this target must NOT link `irldriver` (its copy is built
+# without tracking and would collide at link time).
+add_executable(irldriver-tests
+    ${CMAKE_CURRENT_LIST_DIR}/test_translate_protobuf.cpp
+    ${IRLC_DIR}/src/irl/driver/translate_protobuf.cpp
+)
+
+target_compile_definitions(irldriver-tests PRIVATE TRANSLATE_PROTO_TRACK_FIELDS)
+
+target_include_directories(irldriver-tests
+    PRIVATE
+        ${IRLC_DIR}/src/
+)
+
+target_link_options(irldriver-tests PRIVATE -g -fsanitize=address)
+
+target_link_libraries(irldriver-tests
+    PRIVATE
+        irlcore
+        irlproto
+        Catch2::Catch2WithMain
+)
+
+add_test(NAME irldriver-tests COMMAND irldriver-tests)
+
 # Legacy tests, disabled during the interface refactor: they still depend on the
 # old `src/core` compiler/routing/parsers and do not build against the split.
 # Re-enable each alongside the module it exercises.
