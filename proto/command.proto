@@ -8,7 +8,7 @@ message DiodeDaughterboard {}
 
 message BasicDaughterboard {}
 
-message DaughterboardInfo {
+message DaughterboardTopology {
     fixed64 unique_id = 1;
 
     // These will be < 32 bits, protobuf uses varint encoding.
@@ -25,10 +25,10 @@ message DaughterboardInfo {
 }
 
 message MotherboardTopology {
-    message NullableDaughterboardInfo {
+    message NullableDaughterboardTopology {
         oneof daughterboard {
             Empty empty = 1;
-            DaughterboardInfo daughterboard_info = 2;
+            DaughterboardTopology daughterboard_info = 2;
         }
     }
 
@@ -40,7 +40,7 @@ message MotherboardTopology {
     uint32  firm_version_minor = 4; // 8 bit
     uint32  firm_version_patch = 5; // 8 bit
     
-    repeated NullableDaughterboardInfo daughterboards = 6;
+    repeated NullableDaughterboardTopology daughterboards = 6;
 }
 
 message TopologyRequest {}
@@ -57,11 +57,24 @@ message ProgramXbar {
     uint32 crossbar_id = 1;
     uint32 row = 2;
     uint32 column = 3;
+    bool do_connect = 4;
+}
+
+// Send info to program a switch IC
+message ProgramSwitch {
+    // Which IC to program
+    uint32 switch_id = 1;
+    // Which of the siwtches in this IC should be modified by this cmd
+    uint32 active_bitmask = 2;
+    // What state to set each of the switches to (only meaningful for bits where active_bitmask==1)
+    // 1 = closed/connected 0 = open/disconnected
+    uint32 onoff_bitmask = 3;
 }
 
 message ProgrammingPayload {
     oneof data {
         ProgramXbar xbar = 1;
+        ProgramSwitch swcmd = 2;
     }
 }
 
@@ -92,7 +105,7 @@ message DaughterCommand {
 // A response a daughterboard will send to its mother
 message DaughterResponse {
     oneof data {
-        DaughterboardInfo info = 1;
+        DaughterboardTopology topo = 1;
         StopProgrammingResponse stop = 2;
     }
 }
@@ -100,8 +113,8 @@ message DaughterResponse {
 // A command a motherboard will receive from host/grandmother
 message MotherCommand {
     oneof cmd {
-        TopologyRequest topology_request = 1;  
-        ProgrammingCommand dummy_command = 2;
+        TopologyRequest topo = 1;  
+        ProgrammingCommand prog = 2;
         StopProgramming stop = 3;
     }
 }
@@ -109,7 +122,7 @@ message MotherCommand {
 // A response a motherboard will send to host/grandmother
 message MotherResponse {
     oneof data {
-        MotherboardTopology info = 1;
+        TopologyResponse topo = 1;
         StopProgrammingResponse stop = 2;
     }
 }
