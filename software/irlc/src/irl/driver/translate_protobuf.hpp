@@ -1,3 +1,4 @@
+#include <cstddef>
 #include <cstdint>
 
 #include <irl/command.hpp>
@@ -30,4 +31,4 @@ void initStopProgrammingCmd(MotherCommand *out);
 
 void initTopoRequestCmd(MotherCommand *out);
 
-irl::IrlTopology unpackTopology(TopologyResponsePB const &topo);
+irl::IrlTopology unpackTopology(TopologyResponsePB const &topo, size_t sequence_no);

@@ -83,11 +83,9 @@ void initProgramSwitches(ProgramSwitchPB *out, irl::ProgramPhysicalSwitches cons
     SET_FIELD(*out, onoff_bitmask, psw.onoff_bitmask);
 }
 
-void initStopProgrammingCmd(MotherCommandPB *out) {
-    StopProgramming *subout = GET_MUTABLE(*out, stop);
-}
+void initStopProgrammingCmd(MotherCommandPB *out) { (void)GET_MUTABLE(*out, stop); }
 
-void initTopoRequestCmd(MotherCommand *out) { TopologyRequest *subout = GET_MUTABLE(*out, topo); }
+void initTopoRequestCmd(MotherCommand *out) { (void)GET_MUTABLE(*out, topo); }
 
 //======================================
 // FUNCTIONS FOR READING FROM PROTOBUFS
@@ -99,7 +97,7 @@ static void unpackDaughterboardTopology(irl::DaughterboardTopology *out,
                                         DaughterboardTopologyPB const &dtopo);
 
 irl::IrlTopology unpackTopology(TopologyResponsePB const &topo, size_t sequence_no) {
-    auto mothers = GET_FIELD(topo, motherboards);
+    auto const &mothers = GET_FIELD(topo, motherboards);
     auto nMothers = mothers.size();
 
     Netlist netlist{};
@@ -110,6 +108,9 @@ irl::IrlTopology unpackTopology(TopologyResponsePB const &topo, size_t sequence_
         unpackMotherboardTopology(outMtopos + i, mtopo);
         i++;
     }
+
+    // TODO:
+    // INITIALIZE NETLIST BASED ON outMtopos
 
     return IrlTopology(outMtopos, nMothers, std::move(netlist), sequence_no);
 };
@@ -123,7 +124,7 @@ void unpackMotherboardTopology(irl::MotherboardTopology *out, MotherboardTopolog
     out->firmwareVersion.minor = GET_FIELD(mtopo, firm_version_minor);
     out->firmwareVersion.patch = GET_FIELD(mtopo, firm_version_patch);
 
-    auto daughters = GET_FIELD(mtopo, daughterboards);
+    auto const &daughters = GET_FIELD(mtopo, daughterboards);
     auto nMothers = daughters.size();
     ASSERT(nMothers == std::size(out->daughterboards), "Got bad number of daughterboards.");
 
