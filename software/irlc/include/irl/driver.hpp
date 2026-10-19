@@ -2,7 +2,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <memory>
 #include <string>
 #include <string_view>
 #include <variant>
@@ -33,8 +32,12 @@ struct CommandError {
 template <typename Data> class CommandResult {
   private:
     std::variant<CommandError, Data> mInfo;
-    // A bunch of static helper methods to create these results
-    friend class CommandResultFactory;
+
+    CommandResult(CommandError &&err) : mInfo(std::move(err)) {};
+    CommandResult(Data &&data) : mInfo(std::move(data)) {};
+
+    // A collection of static helper methods to create these results
+    friend class CRF;
 
   public:
     // Did this command result in an error?
@@ -52,6 +55,15 @@ struct NoResponseExpected {};
 
 // The class used for interfacing with the tspice
 class IrlDriver {
+
+    struct CmdCollection {
+        void (*nextCmd)();
+        bool (*cmdsDone)();
+        ProgrammingCommand const &(*currentCmd)();
+    };
+    CommandResult<NoResponseExpected> doProgrammingInner(IrlTopology const *topo,
+                                                         CmdCollection const &cmds);
+
   public:
     // Create a driver and bind it to a serial port.
     // If successful, will spawn a new thread to handle background operations
@@ -76,22 +88,46 @@ class IrlDriver {
     // Disconnects all existing connections and stops any ongoing functionality.
     CommandResult<NoResponseExpected> resetTspice();
 
+    bool topologyValid(IrlTopology const *topo);
+
+    // The preferred way to program the board
+    // resets, sends begin, sends stream of packets, then sends end
+    // Will automatically batch ProgramLogicalSwitch commands
+    // command_collection must have begin() and end() which produces iterators
+    //   of ilr::ProgrammingCommands
+    template <typename T>
+    CommandResult<NoResponseExpected> doProgramming(IrlTopology const *topo,
+                                                    T const &command_collection) {
+        auto current = command_collection.begin();
+        auto end = command_collection.end();
+        using IterT = decltype(current);
+        CmdCollection cmds;
+        cmds.nextCmd = [&current]() { (*static_cast<IterT *>(current))++; };
+        cmds.cmdsDone = [&current, &end]() {
+            return (*static_cast<IterT *>(current)) == (*static_cast<IterT *>(end));
+        };
+        cmds.currentCmd = [&current]() { return *(*static_cast<IterT *>(current)); };
+        return doProgrammingInner(topo, cmds);
+    }
+
+    // ADVANCED USE ONLY. Prefer doProgramming
     // Resets the tspice and places it into programming mode.
     // Requires a non-stale topology to ensure no mistakes are made.
     CommandResult<NoResponseExpected> beginProgramming(IrlTopology const *topo);
 
+    // ADVANCED USE ONLY. Prefer doProgramming
     // End programming. Places the tspice in "active" mode.
     // Returns the number of programming commands successfully completed since
     // the last beginProgramming call.
     // Requires a non-stale topology to ensure no mistakes are made.
     CommandResult<uint32_t> endProgramming(IrlTopology const *topo);
 
+    // ADVANCED USE ONLY. Prefer doProgramming
     // Send a programming command to the tspice.
     // It must be in programming mode.
     // Requires a non-stale topology to ensure no mistakes are made.
     CommandResult<NoResponseExpected> sendProgrammingCommand(IrlTopology const *topo,
                                                              ProgrammingCommand const *cmd);
-
     // Get the topology of the connected tspice
     CommandResult<IrlTopology> queryTopology();
 };
