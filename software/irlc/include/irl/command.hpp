@@ -12,7 +12,7 @@ namespace irl {
 // Program a single crossbar point
 struct ProgramXbar {
     // Which crossbar to program
-    uint32_t xbarId;
+    XbarId xbarId;
     // Which row to program
     uint32_t row;
     // Which column to program
@@ -21,22 +21,32 @@ struct ProgramXbar {
     bool connect;
 };
 
-// Where to route a programming command
-struct CommandDestination {
-    // Which motherboard (index into the topology array) to program
-    uint32_t motherboardIndex;
-    // If programming a daughterboard, which daughterboard index.
-    // If not, must be NO_DAUGHTERBOARD, indicating the motherboard as the dest
-    uint32_t daughterboardIndex;
-    static constexpr uint32_t NO_DAUGHTERBOARD = UINT32_MAX;
+// Program an individual logical switch (part of a multi-switch IC)
+struct ProgramLogicalSwitch {
+    // The logical ID of the switch to program
+    SpstId switch_id;
+    // Should it become connected or disconnected
+    bool connect;
+};
+
+// ADVANCED USE ONLY
+// This command programs different switches depending on its destination
+// Program some or all switches on a physical switch IC
+struct ProgramPhysicalSwitches {
+    // The physical id of the switch IC (local to the board you are sending this command to)
+    // The sw_id of this field will be ignored
+    SpstId spst_ic_id;
+    // Which switches on this IC should be modified by this command
+    uint32_t active_bitmask;
+    // What state to set each of the switches to (only meaningful for bits where active_bitmask==1)
+    // 1 = closed/connected 0 = open/disconnected
+    uint32_t onoff_bitmask;
 };
 
 // A programming command to send to the tspice
 struct ProgrammingCommand {
-    // Which board to send the command to
-    CommandDestination dest;
     // The command to send
-    std::variant<ProgramXbar> cmd;
+    std::variant<ProgramXbar, ProgramLogicalSwitch, ProgramPhysicalSwitches> cmd;
 };
 
 // SemVer of the firmware running on a mother/daughter board
@@ -67,8 +77,6 @@ struct DaughterboardTopology {
     uint64_t uniqueId;
     FirmwareVersion firmwareVersion;
     DaughterboardKind kind;
-    // The actual topology of this daughterboard
-    Netlist netlist;
 };
 
 // Topology information about a motherboard
@@ -78,8 +86,6 @@ struct MotherboardTopology {
     uint32_t hardwareRevision;
     FirmwareVersion firmwareVersion;
     DaughterboardTopology daughterboards[4];
-    // The actual topology of this motherboard
-    Netlist netlist;
 };
 
 // The topology of a connected board.
@@ -90,24 +96,34 @@ struct MotherboardTopology {
 // stale (their sequence number fails to match).
 // This enusers any programming code is always working with the most recent
 // topology, and will not accidentally damage the tspice.
-struct IrlTopology {
+class IrlTopology {
     // Array of motherboards with size sizeMotherboards
-    std::unique_ptr<MotherboardTopology[]> motherboards;
-    size_t sizeMotherboards;
+    MotherboardTopology *mMotherboards;
+    size_t mSizeMotherboards;
 
-    MotherboardTopology &operator[](size_t i) {
-        detail::ASSERT(i < sizeMotherboards, "Index out of bounds");
-        return motherboards[i];
-    }
+    Netlist mNetlist;
 
-  private:
     // Internal detail used to keep track of when this IrlTopology was created.
     // If someone has changed the topology of the tspice (via connecting or
     // disconnecting a board), the driver will detect this and stop accepting
     // this IrlTopology
-    size_t topoSequenceNumber;
+    size_t mTopoSequenceNumber;
+
     // IrlDriver has to be able to check topoSequenceNumber
     friend class IrlDriver;
+
+  public:
+    IrlTopology(MotherboardTopology *ms, size_t msz, Netlist &&nets, size_t topo)
+        : mMotherboards(ms), mSizeMotherboards(msz), mNetlist(std::move(nets)),
+          mTopoSequenceNumber(topo) {};
+    ~IrlTopology() { delete[] mMotherboards; }
+
+    Netlist &netlist() { return mNetlist; };
+
+    MotherboardTopology &operator[](size_t i) {
+        detail::ASSERT(i < mSizeMotherboards, "Index out of bounds");
+        return mMotherboards[i];
+    }
 };
 
 } // namespace irl

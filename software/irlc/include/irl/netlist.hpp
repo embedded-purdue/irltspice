@@ -26,21 +26,64 @@ enum class NetKind {
     V_NEG,
 };
 
+// Id for a motherboard. An index into the topology array
+using MotherId_t = uint8_t;
+// Id for a daughterboard, or NO_DAUGHTERBOARD (indicating just the motherboard).
+// An index into corresponding motherboard's topology array
+using DaughterId_t = uint8_t;
+static constexpr DaughterId_t NO_DAUGHTERBOARD = std::numeric_limits<DaughterId_t>::max();
+
+// An identifier for a topology SPST switch
+// Effectively it's a hierarchical ID
+// There are multiple boards, each board has multiple switch ICs, and each switch IC has multiple
+// switches Each switch operates independently, though, so each needs a unique ID. The fields of
+// this struct should not be touched, unless in advanced use cases
+struct SpstId {
+    // which switch on the ic is it?
+    uint8_t sw_id : 8;
+    // which ic on the board is it?
+    uint8_t ic_id : 8;
+    // Which daughterboard is this switch on
+    // NO_DAUGHTERBOARD -> not on a daughterboard (on motherboard)
+    DaughterId_t daughter_id : sizeof(DaughterId_t) * 8;
+    // which motherboard is this switch a child of
+    MotherId_t mother_id : sizeof(MotherId_t) * 8;
+};
+
+// An identifier for a topology crossbar switch
+// Effectively it's a hierarchical ID
+// There are multiple boards, each board has multiple crossbar ICs
+// Each switch operates independently, though, so each needs a unique ID.
+// The fields of this struct should not be touched, unless in advanced use cases
+struct XbarId {
+    // which ic on the board is it?
+    uint16_t ic_id : 16;
+    // Which daughterboard is this switch on
+    // NO_DAUGHTERBOARD -> not on a daughterboard (on motherboard)
+    DaughterId_t daughter_id : sizeof(DaughterId_t) * 8;
+    // which motherboard is this switch a child of
+    MotherId_t mother_id : sizeof(MotherId_t) * 8;
+};
+
 // A value associated with a vertex
 // Which field is active depends on the kind of vertex
 union NetlistVertexValue {
     double numeric;
     NetKind netKind;
     uint32_t customId;
-    uint32_t xbarId;
-    uint32_t spstId;
+
+    // An identifier for a topology crossbar
+    // Unique across the entire topology
+    XbarId xbarId;
+    SpstId spstId;
+
     struct {
-        uint8_t motherId;
-        uint8_t duaghterId;
+        MotherId_t motherId;
+        DaughterId_t duaghterId;
     } motherToDaughterConnId;
     struct {
-        uint8_t grandMotherId;
-        uint8_t childMotherId;
+        MotherId_t grandMotherId;
+        MotherId_t childMotherId;
     } motherToMotherConnId;
     NoData empty;
     void *freeNext;
