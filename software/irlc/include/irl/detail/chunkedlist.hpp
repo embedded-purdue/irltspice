@@ -6,6 +6,7 @@
 #include <memory>
 #include <new>
 #include <type_traits>
+#include <utility>
 
 namespace irl {
 namespace detail {
@@ -147,8 +148,19 @@ template <typename T, std::size_t ChunkSize, typename Trait> class ChunkedList {
     ChunkedList() noexcept = default;
     ChunkedList(const ChunkedList &) = delete;
     ChunkedList &operator=(const ChunkedList &) = delete;
-    ChunkedList(ChunkedList &&) = delete;
-    ChunkedList &operator=(ChunkedList &&) = delete;
+    ChunkedList(ChunkedList &&other) {
+        this->mChunks = other.mChunks;
+        this->mChunkTail = other.mChunkTail;
+        this->mFreeHead = other.mFreeHead;
+        other.mChunks = nullptr;
+        other.mChunkTail = nullptr;
+        other.mFreeHead = nullptr;
+    }
+    ChunkedList &operator=(ChunkedList &&other) {
+        std::swap(this->mChunks, other.mChunks);
+        std::swap(this->mChunkTail, other.mChunkTail);
+        std::swap(this->mFreeHead, other.mFreeHead);
+    }
 
     ~ChunkedList() {
         for (Chunk *c = mChunks; c != nullptr; c = c->mNext) {

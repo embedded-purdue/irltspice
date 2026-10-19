@@ -3,6 +3,8 @@
 
 #include <irl/driver.hpp>
 
+#include "irl/driver/translate_protobuf.hpp"
+
 // Stub implementation for the `interface-refactor`. Every method aborts: the
 // real serial-port / protobuf / oscilloscope logic will move here from
 // `src/core` (likely under `src/irl/driver/`).
@@ -11,6 +13,16 @@
 // always-on, noreturn fallback (so non-void stubs do not warn).
 
 namespace irl {
+
+class CRF {
+  public:
+    template <typename T> static CommandResult<T> staleTopo() {
+        return CommandResult<T>(
+            CommandError{.msg = "Board topology has changed. Call queryTopology, make necessary "
+                                "changes, and try again.",
+                         .code = CommandErrorCode::STALE_TOPOLOGY});
+    }
+};
 
 IrlDriver::IrlDriver(std::string_view serial_port) {
     (void)serial_port;
@@ -37,6 +49,28 @@ bool IrlDriver::reconnect(std::string_view serial_port) {
 CommandResult<NoResponseExpected> IrlDriver::resetTspice() {
     assert(0 && "irl::IrlDriver::resetTspice is not implemented yet");
     std::abort();
+}
+bool IrlDriver::topologyValid(IrlTopology const *topo) {
+    // TODO:
+    // Check against internal state
+    return true;
+}
+
+CommandResult<NoResponseExpected> IrlDriver::doProgrammingInner(IrlTopology const *topo,
+                                                                CmdCollection const &cmds) {
+    if (!topologyValid(topo)) {
+        return CRF::staleTopo<NoResponseExpected>();
+    }
+
+    auto r = beginProgramming(topo);
+    if (r.isError()) {
+        return r;
+    }
+
+    while (!cmds.cmdsDone()) {
+        ProgrammingCommand const &cmd = cmds.currentCmd();
+        cmds.nextCmd();
+    }
 }
 
 CommandResult<NoResponseExpected> IrlDriver::beginProgramming(IrlTopology const *topo) {

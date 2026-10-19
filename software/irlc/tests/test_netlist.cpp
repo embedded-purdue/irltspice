@@ -82,7 +82,7 @@ TEST_CASE("Netlist can be built, walked, and printed", "[netlist]") {
     nl.connect<NetlistEdgeKind::PIN_C>(c, gnd, NoData{});
 
     // A topology vertex/edge so both data-carrying directions are exercised.
-    auto *xbar = nl.new_vertex<NetlistVertexKind::TOPO_XBAR>(std::string("X1"), 3u);
+    auto *xbar = nl.new_vertex<NetlistVertexKind::TOPO_XBAR>(std::string("X1"), {});
     auto *topo_net = nl.new_vertex<NetlistVertexKind::NET>(std::string("t0"), NetKind::WIRE);
     auto *xpin = nl.connect<NetlistEdgeKind::PIN_TOPO_XBAR>(
         xbar, topo_net, XbarPinId{.side = XbarPinId::Side::ROW, .index = 7});
