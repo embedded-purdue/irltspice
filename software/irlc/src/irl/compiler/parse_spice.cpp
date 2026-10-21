@@ -200,11 +200,6 @@ static inline bool net_count_good(vector<ParseError> errs, int num, string_view 
     return true;
 }
 
-static inline uint32_t parse_custom_id(string_view reference, string_view filename,
-                                       const vector<Token *> &line) {
-    return -1;
-}
-
 static inline optional<double> parse_spice_number(vector<ParseError> &errs, string_view reference,
                                                   string_view filename,
                                                   const vector<Token *> &line) {
@@ -262,16 +257,48 @@ static inline optional<double> parse_spice_number(vector<ParseError> &errs, stri
     return value;
 }
 
+template <NetlistVertexKind K>
+static inline NetlistVertex *add_empty(Netlist &netlist, string_view name) {
+    return netlist.new_vertex<K>(string(name), {});
+}
+
 static inline NetlistVertex *get_or_add_net(Netlist &netlist, NetNameMap &netnames,
                                             string_view net_name) {
+    NetlistVertex *(*make_net)(Netlist &, string_view);
+    string_view name;
 
-    if (netnames.contains(net_name)) {
-        return netnames[net_name];
+    switch (get_net_kind(net_name)) {
+    case NET:
+        name = net_name;
+        make_net = add_empty<NET>;
+        break;
+    case NET_SPECIAL:
+        name = net_name;
+        make_net = add_empty<NET_SPECIAL>;
+        break;
+    case NET_V_GND:
+        name = IRL_NET_V_GND_NAMES[0];
+        make_net = add_empty<NET_V_GND>;
+        break;
+    case NET_V_HIGH:
+        name = IRL_NET_V_HIGH_NAMES[0];
+        make_net = add_empty<NET_V_HIGH>;
+        break;
+    case NET_V_NEG:
+        name = IRL_NET_V_NEG_NAMES[0];
+        make_net = add_empty<NET_V_NEG>;
+        break;
+    default:
+        ASSERT(false, "Unhandled NET kind");
+        break;
     }
 
-    NetlistVertex *net = netlist.new_vertex<NET>(string(net_name), WIRE);
+    if (netnames.contains(name)) {
+        return netnames[name];
+    }
 
-    netnames[net_name] = net;
+    NetlistVertex *net = make_net(netlist, name);
+    netnames[name] = net;
     return net;
 }
 
@@ -402,10 +429,7 @@ void add_element(Netlist &netlist, vector<ParseError> &errs, NetNameMap &netname
         }
 
         NetlistVertex *vert;
-        if (recognized.component_kind == CUSTOM) {
-            uint32_t customid = parse_custom_id(reference, filename, line);
-            vert = netlist.new_vertex<CUSTOM>(string(reference), std::move(customid));
-        } else if (recognized.numeric_value) {
+        if (recognized.numeric_value) {
             optional<double> val = parse_spice_number(errs, reference, filename, line);
             if (!val.has_value()) {
                 return;
