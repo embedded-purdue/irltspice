@@ -20,46 +20,30 @@
 
 namespace irl {
 
-using enum NetKind;
 using enum NetlistVertexKind;
 using enum NetlistEdgeKind;
 
-constexpr const std::array IRL_CIR_INPUT_NET_NAMES = {"INPUT"};
-constexpr const std::array IRL_CIR_OUTPUT_NET_NAMES = {"OUTPUT"};
-constexpr const std::array IRL_V_GND_NET_NAMES = {"0", "GND"};
-constexpr const std::array IRL_V_HIGH_NET_NAMES = {"VCC", "VDD", "+5V"};
-constexpr const std::array IRL_V_NEG_NET_NAMES = {"-5V"};
+constexpr const std::array IRL_NET_V_GND_NAMES = {"GND", "0"};
+constexpr const std::array IRL_NET_V_HIGH_NAMES = {"VCC", "VDD", "+5V"};
+constexpr const std::array IRL_NET_V_NEG_NAMES = {"-5V"};
+constexpr const auto NET_SPECIAL_PFX = "IRLS_";
 
 #define NET_PAIR(KIND)                                                                             \
-    std::pair { std::span(IRL_##KIND##_NET_NAMES.begin(), IRL_##KIND##_NET_NAMES.end()), KIND }
+    std::pair { std::span(IRL_##KIND##_NAMES.begin(), IRL_##KIND##_NAMES.end()), KIND }
 
-constexpr const std::array RECOGNIZED_NETS = arrify(
-    NET_PAIR(CIR_INPUT), NET_PAIR(CIR_OUTPUT), NET_PAIR(V_GND), NET_PAIR(V_HIGH), NET_PAIR(V_NEG));
+constexpr const std::array RECOGNIZED_NETS =
+    arrify(NET_PAIR(NET_V_GND), NET_PAIR(NET_V_HIGH), NET_PAIR(NET_V_NEG));
 
-static inline const char *net_name(NetKind const &netval) {
-    switch (netval) {
-    case WIRE:
-        return "Normal Wire";
-    case CIR_INPUT:
-        return "Circuit Input";
-    case CIR_OUTPUT:
-        return "Circuit Output";
-    case V_GND:
-        return "Ground";
-    case V_HIGH:
-        return "Positive Voltage (5V)";
-    case V_NEG:
-        return "Negative Voltage (-5V)";
+static inline NetlistVertexKind get_net_kind(auto &net_name) {
+    if (net_name.starts_with(NET_SPECIAL_PFX)) {
+        return NET_SPECIAL;
     }
-}
-
-static inline NetKind get_net_kind(auto &net_name) {
     for (auto opt : RECOGNIZED_NETS) {
         if (std::find(opt.first.begin(), opt.first.end(), net_name) != opt.first.end()) {
             return opt.second;
         }
     }
-    return WIRE;
+    return NET;
 };
 
 typedef struct _RecognizedComponent {
@@ -106,15 +90,10 @@ struct RCStorage {
               arrify(PIN_Q_PNP_COLLECTOR, PIN_Q_PNP_BASE, PIN_Q_PNP_EMITTER))
     COMPONENT(Q_NPN, "BJT (NPN)", false, arrify("Q"), arrify("NPN"),
               arrify(PIN_Q_NPN_COLLECTOR, PIN_Q_NPN_BASE, PIN_Q_NPN_EMITTER))
-    COMPONENT(CUSTOM, "User's custom component", false, arrify("U"), arrify("CUSTOM"),
-              arrify(PIN_CUSTOM, PIN_CUSTOM))
-    // COMPONENT(CELL_BUFFER, "IRLTSPICE standard cell output buffer", false, arrify("U"),
-    //           arrify("IRL_BUFFER"), arrify(PIN_CELL_BUFFER_OUT, PIN_CELL_BUFFER_IN))
 };
 
 constexpr RecognizedComponent RECOGNIZED_COMPONENTS[] = {
     RCStorage::component_R,     RCStorage::component_C,     RCStorage::component_OPAMP,
-    RCStorage::component_DIODE, RCStorage::component_Q_PNP, RCStorage::component_Q_NPN,
-    RCStorage::component_CUSTOM};
+    RCStorage::component_DIODE, RCStorage::component_Q_PNP, RCStorage::component_Q_NPN};
 
 } // namespace irl

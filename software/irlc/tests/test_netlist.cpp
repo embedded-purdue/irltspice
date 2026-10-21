@@ -9,28 +9,6 @@ using namespace irl;
 
 namespace {
 
-const char *vertex_kind_name(NetlistVertexKind kind) {
-    switch (kind) {
-#define VERT_KIND(NAME, UNION_FIELD)                                                               \
-    case NetlistVertexKind::NAME:                                                                  \
-        return #NAME;
-        VERT_KINDS
-#undef VERT_KIND
-    }
-    return "?";
-}
-
-const char *edge_kind_name(NetlistEdgeKind kind) {
-    switch (kind) {
-#define EDGE_KIND(NAME, ASSOCIATED_VERT_KIND, UNION_FIELD)                                         \
-    case NetlistEdgeKind::NAME:                                                                    \
-        return #NAME;
-        EDGE_KINDS
-#undef EDGE_KIND
-    }
-    return "?";
-}
-
 // Human-readable walk of the netlist. This is deliberately a plain stdio dump:
 // it gives us something to eyeball while the real printing/formatting API is
 // still being designed.
@@ -40,10 +18,7 @@ void dump(Netlist &nl) {
     std::puts("vertices:");
     for (auto it = verts.first; it != verts.second; ++it) {
         NetlistVertex &v = *it;
-        std::printf("  [%zu] %s", nv++, vertex_kind_name(v.kind()));
-        if (auto *n = v.get_data_if<NetlistVertexKind::NET>()) {
-            std::printf(" netKind=%d", static_cast<int>(*n));
-        }
+        std::printf("  [%zu] %s", nv++, VertKindName(v.kind()).begin());
         if (auto *r = v.get_data_if<NetlistVertexKind::R>()) {
             std::printf(" R=%g", *r);
         }
@@ -58,7 +33,7 @@ void dump(Netlist &nl) {
     std::puts("edges:");
     for (auto it = edges.first; it != edges.second; ++it) {
         NetlistEdge &e = *it;
-        std::printf("  [%zu] %s\n", ne++, edge_kind_name(e.kind()));
+        std::printf("  [%zu] %s\n", ne++, EdgeKindName(e.kind()).begin());
     }
 
     std::printf("(%zu vertices, %zu edges)\n", nv, ne);
@@ -70,9 +45,11 @@ TEST_CASE("Netlist can be built, walked, and printed", "[netlist]") {
     Netlist nl;
 
     // An RC low-pass: in --R-- out --C-- gnd
-    auto *input = nl.new_vertex<NetlistVertexKind::NET>(std::string("in"), NetKind::CIR_INPUT);
-    auto *output = nl.new_vertex<NetlistVertexKind::NET>(std::string("out"), NetKind::CIR_OUTPUT);
-    auto *gnd = nl.new_vertex<NetlistVertexKind::NET>(std::string("0"), NetKind::V_GND);
+    auto *input =
+        nl.new_vertex<NetlistVertexKind::NET_SPECIAL>(std::string("IRLS_CIRCUIT_INPUT"), NoData{});
+    auto *output =
+        nl.new_vertex<NetlistVertexKind::NET_SPECIAL>(std::string("IRLS_CIRCUIT_OUTPUT"), NoData{});
+    auto *gnd = nl.new_vertex<NetlistVertexKind::NET_V_GND>(std::string("GND"), NoData{});
     auto *r = nl.new_vertex<NetlistVertexKind::R>(std::string("R1"), 1000.0);
     auto *c = nl.new_vertex<NetlistVertexKind::C>(std::string("C1"), 1e-6);
 
@@ -83,7 +60,7 @@ TEST_CASE("Netlist can be built, walked, and printed", "[netlist]") {
 
     // A topology vertex/edge so both data-carrying directions are exercised.
     auto *xbar = nl.new_vertex<NetlistVertexKind::TOPO_XBAR>(std::string("X1"), {});
-    auto *topo_net = nl.new_vertex<NetlistVertexKind::NET>(std::string("t0"), NetKind::WIRE);
+    auto *topo_net = nl.new_vertex<NetlistVertexKind::NET>(std::string("t0"), NoData{});
     auto *xpin = nl.connect<NetlistEdgeKind::PIN_TOPO_XBAR>(
         xbar, topo_net, XbarPinId{.side = XbarPinId::Side::ROW, .index = 7});
 

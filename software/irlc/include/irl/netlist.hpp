@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -16,15 +17,6 @@
 namespace irl {
 
 struct NoData {};
-
-enum class NetKind {
-    WIRE,
-    CIR_INPUT,
-    CIR_OUTPUT,
-    V_GND,
-    V_HIGH,
-    V_NEG,
-};
 
 // Id for a motherboard. An index into the topology array
 using MotherId_t = uint8_t;
@@ -69,8 +61,6 @@ struct XbarId {
 // Which field is active depends on the kind of vertex
 union NetlistVertexValue {
     double numeric;
-    NetKind netKind;
-    uint32_t customId;
 
     // An identifier for a topology crossbar
     // Unique across the entire topology
@@ -78,13 +68,13 @@ union NetlistVertexValue {
     SpstId spstId;
 
     struct {
-        MotherId_t motherId;
-        DaughterId_t duaghterId;
-    } motherToDaughterConnId;
+        MotherId_t mother_id;
+        DaughterId_t daughter_id;
+    } motherToDaughterPort;
     struct {
-        MotherId_t grandMotherId;
-        MotherId_t childMotherId;
-    } motherToMotherConnId;
+        MotherId_t grandmother_id;
+        MotherId_t childmother_id;
+    } motherToMotherPort;
     NoData empty;
     void *freeNext;
 };
@@ -96,19 +86,68 @@ enum class NetlistVertexKind : uint16_t {
 // X-Macro pattern
 // A name of a kind of vertex and which field of NetlistVertexValue is active for it
 // Signature: VERT_KIND(NAME, UNION_FIELD)
+// A vertex is either a NET, a COMPONENT, or a PORT
+// If it is a net there are 3 kinds:
+//   1. NET - Generic NET.Any NET in a design can be mapped to any NET in a topology
+//   2. NET_V_?? - Constant voltage.
+//      Any constant voltage in a design may be mapped to any constant voltage in the topology with
+//      matching kind. The rule verifier knows what these voltages are, and will attempt to prevent
+//      short-circuits. There are only 3 voltages on the board: +/-5V and GND.
+//   3. NET_SPECIAL - Special net.
+//      A design NET_SPECIAL will be mapped to a topology NET_SPECIAL iff their names match.
+//      These are intended to be used as an escape hatch for unknowable signals (i.e. circuit input
+//      or output or custom components). In a user's design, this must be prefixed with "IRLS_"
+// If it is a COMPONENT, it's a normal electrical component (R,C, opamp, etc) or a topology
+// component
+//    Topology components may not appear in designs. They are special because the router knows what
+//    they do.
+// If it is a PORT it is known to just electrically bridge two nets, except that it leaves a given
+// PCB. A PORT has two sides: parent and child, and bridges two nets on different boards.
+//    There are 3 flavors of PORTS:
+//      - PORT_GENERIC - a 1-to-1 connection point on the PCB a user may interact with.
+//          Can appear on mother or daughter. Using CLI flags/some interface, the user may specify
+//          what net is connected to the child side. The parent side is always the board it appears
+//          on. A user might add a flag like:
+//              --port-connection={"mother":0,"daughter":1,"port":"PORT_NAME1","net":"IRLS_CIRCUIT_INPUT"}
+//          This allows the user to connect arbitrary nets to a PORT_GENERIC only. Note the IRLS_
+//          prefix; if that predix is not specified, it will be assumed that this is a normal net,
+//          i.e. two flags representing a jumper wire bridging two boards. If no flag is specified
+//          it is assumed the port is disconnected, and nets connected to parent side may be used as
+//          normal design nets.
+//      - PORT_MM - An N-to-N bundle of nets connecting a GRAND-motherboard to a motherboard.
+//          Can only appear on a mother. A mother's topology may have at most 2:
+//          one which it is connected to the child side and one where it is connected to the parent
+//          side. Ids will always be overwritten. The parent MM port of motherboard i in the
+//          topology's motherboards array will be joined with the child MM port of motherboard i+1.
+//          Connects nets connected to matching "pinIndex"s.
+//      - PORT_MD - An N-to-N bundle of nets connecting a motherboard to a daughterboard.
+//          May appear on a mother any number of times, given each has a distinct daughter_id.
+//          Can appear only once on a daughter. When stitching, a daughterboard in port i of a
+//          motherboard will have its topology instantiated and connected to PORT_MD with
+//          daughter_id "i" on the motherboard's topology. The mother id will be overwritten by the
+//          index of the mother. Connects nets connected to matching "pinIndex"s.
+// Other notes on topology creation:
+//  - Nets on mother/daughters will be prefixed by "M{m}D{d}:" to uniquify their names.
+//      - Does not apply to special nets or nets specified to connect to PORT_GENERICs.
+//  - Nets are assumed to be star-shaped junctions (i.e. just joined at one point) to make edge
+//  length meaningful.
 #define VERT_KINDS                                                                                 \
-    VERT_KIND(NET, netKind)                                                                        \
+    VERT_KIND(NET, empty)                                                                          \
+    VERT_KIND(NET_SPECIAL, empty)                                                                  \
+    VERT_KIND(NET_V_GND, empty)                                                                    \
+    VERT_KIND(NET_V_HIGH, empty)                                                                   \
+    VERT_KIND(NET_V_NEG, empty)                                                                    \
     VERT_KIND(R, numeric)                                                                          \
     VERT_KIND(C, numeric)                                                                          \
     VERT_KIND(OPAMP, empty)                                                                        \
     VERT_KIND(DIODE, empty)                                                                        \
     VERT_KIND(Q_PNP, empty)                                                                        \
     VERT_KIND(Q_NPN, empty)                                                                        \
-    VERT_KIND(CUSTOM, customId)                                                                    \
     VERT_KIND(TOPO_XBAR, xbarId)                                                                   \
     VERT_KIND(TOPO_SPST, spstId)                                                                   \
-    VERT_KIND(TOPO_MD_CONN, motherToDaughterConnId)                                                \
-    VERT_KIND(TOPO_MM_CONN, motherToMotherConnId)
+    VERT_KIND(PORT_GENERIC, empty)                                                                 \
+    VERT_KIND(PORT_MM, motherToMotherPort)                                                         \
+    VERT_KIND(PORT_MD, motherToDaughterPort)
 
 #define VERT_KIND(NAME, UNION_FIELD) NAME,
 
@@ -126,6 +165,9 @@ template <NetlistVertexKind Kind> class VertKindInfo {};
         /* The NetlistVertexValue type associated with this vertex kind */                         \
         using AssociatedData = decltype(NetlistVertexValue{}.UNION_FIELD);                         \
         static constexpr auto AssociatedField = &NetlistVertexValue::UNION_FIELD;                  \
+        static constexpr std::string_view Name = #NAME;                                            \
+        static constexpr bool IsNet = Name.starts_with("NET");                                     \
+        static constexpr bool IsPort = Name.starts_with("PORT");                                   \
     };
 VERT_KINDS
 #undef VERT_KIND
@@ -163,11 +205,14 @@ enum class NetlistEdgeKind {
     EDGE_KIND(PIN_Q_NPN_COLLECTOR, Q_NPN, empty)                                                   \
     EDGE_KIND(PIN_DIODE_K, DIODE, empty)                                                           \
     EDGE_KIND(PIN_DIODE_A, DIODE, empty)                                                           \
-    EDGE_KIND(PIN_CUSTOM, CUSTOM, pinIndex)                                                        \
     EDGE_KIND(PIN_TOPO_XBAR, TOPO_XBAR, xbarPinId)                                                 \
     EDGE_KIND(PIN_TOPO_SPST, TOPO_SPST, empty)                                                     \
-    EDGE_KIND(PIN_TOPO_MD_CONN, TOPO_MD_CONN, pinIndex)                                            \
-    EDGE_KIND(PIN_TOPO_MM_CONN, TOPO_MM_CONN, pinIndex)
+    EDGE_KIND(PIN_PORT_GENERIC_PARENT, PORT_GENERIC, empty)                                        \
+    EDGE_KIND(PIN_PORT_GENERIC_CHILD, PORT_GENERIC, empty)                                         \
+    EDGE_KIND(PIN_PORT_MM_PARENT, PORT_MM, pinIndex)                                               \
+    EDGE_KIND(PIN_PORT_MM_CHILD, PORT_MM, pinIndex)                                                \
+    EDGE_KIND(PIN_PORT_MD_PARENT, PORT_MD, pinIndex)                                               \
+    EDGE_KIND(PIN_PORT_MD_CHILD, PORT_MD, pinIndex)
 
 #define EDGE_KIND(NAME, ASSOCIATED_VERT_KIND, UNION_FIELD) NAME,
 
@@ -184,6 +229,7 @@ template <NetlistEdgeKind Kind> class EdgeKindInfo {};
       public:                                                                                      \
         /* The NetlistVertexValue type associated with this vertex kind */                         \
         using AssociatedData = decltype(NetlistEdgeValue{}.UNION_FIELD);                           \
+        static constexpr std::string_view Name = #NAME;                                            \
         constexpr static auto AssociatedField = &NetlistEdgeValue::UNION_FIELD;                    \
         static constexpr auto AssociatedVertKind = NetlistVertexKind::ASSOCIATED_VERT_KIND;        \
     };
@@ -227,6 +273,9 @@ class NetlistVertex {
     // Disconnects from index i of connections()
     void disconnect_index(size_t index);
 
+    // Removes a vertex and all connections to it
+    void remove_vertex(NetlistVertex *vert);
+
     // Reserves space for "npins" pins
     inline void reserve_pins(size_t npins) { mEdgeList.ensure_capacity(npins); }
 
@@ -246,7 +295,8 @@ class NetlistEdge {
     NetlistVertex *mComponent = nullptr;
     // The net this edge is connected to
     NetlistVertex *mNet = nullptr;
-    // Only meaningful for topologies
+    // Only meaningful for topologies.
+    // The distance to the junction point of the net (nets assumed to have only one junction)
     double mTraceLength = std::numeric_limits<double>::signaling_NaN();
 
   private:
@@ -315,6 +365,43 @@ class Netlist {
     std::pair<ConstEdgeIter, ConstEdgeIter> edges() const { return {mEdges.begin(), mEdges.end()}; }
     std::pair<EdgeIter, EdgeIter> edges() { return {mEdges.begin(), mEdges.end()}; }
 };
+
+namespace detail {
+
+constexpr NetlistVertexKind LAST_NET = NetlistVertexKind::NET_V_NEG;
+#define VERT_KIND(NAME, UNION_FIELD)                                                               \
+    (VertKindInfo<NetlistVertexKind::NAME>::IsNet == NetlistVertexKind::NAME <= LAST_NET) &&
+static_assert(VERT_KINDS true, "LAST_NET is incorrect.");
+#undef VERT_KIND
+
+#define VERT_KIND(NAME, UNION_FIELD) VertKindInfo<NetlistVertexKind::NAME>::IsNet,
+constexpr std::array VERT_IS_NET_TABLE = {VERT_KINDS};
+#undef VERT_KIND
+
+#define VERT_KIND(NAME, UNION_FIELD) VertKindInfo<NetlistVertexKind::NAME>::Name,
+constexpr std::array VERT_NAME_TABLE = {VERT_KINDS};
+#undef VERT_KIND
+
+#define EDGE_KIND(NAME, ASSOCIATED_VERT_KIND, UNION_FIELD)                                         \
+    EdgeKindInfo<NetlistEdgeKind::NAME>::Name,
+constexpr std::array EDGE_NAME_TABLE = {EDGE_KINDS};
+#undef EDGE_KIND
+
+}; // namespace detail
+
+//=========================
+// Basic utility functions
+//=========================
+
+inline constexpr bool VertKindIsNet(NetlistVertexKind kind) { return kind <= detail::LAST_NET; }
+
+inline constexpr std::string_view VertKindName(NetlistVertexKind kind) {
+    return detail::VERT_NAME_TABLE[static_cast<size_t>(kind)];
+}
+
+inline constexpr std::string_view EdgeKindName(NetlistEdgeKind kind) {
+    return detail::EDGE_NAME_TABLE[static_cast<size_t>(kind)];
+}
 
 namespace detail {
 // Free list lives in NetlistVertexValue::freeNext; the tombstone is mKind.

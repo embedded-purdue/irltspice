@@ -47,12 +47,12 @@ NetlistEdge *Netlist::connect(NetlistVertex *v1, NetlistVertex *v2,
     NetlistVertex *component;
     NetlistVertex *net;
 
-    if (v1->kind() == NetlistVertexKind::NET) {
-        detail::ASSERT(v2->kind() != NetlistVertexKind::NET, "Attempted to connect two nets.");
+    if (VertKindIsNet(v1->kind())) {
+        detail::ASSERT(!VertKindIsNet(v2->kind()), "Attempted to connect two nets.");
         net = v1;
         component = v2;
     } else {
-        detail::ASSERT(v2->kind() == NetlistVertexKind::NET,
+        detail::ASSERT(VertKindIsNet(v2->kind()),
                        "Attempted to connect two components. Use a net.");
         net = v2;
         component = v1;
