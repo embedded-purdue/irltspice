@@ -2,9 +2,9 @@
 #include "hardware/gpio.h"
 #include "mcp_i2c.h"
 
-// THIS IS FOR mcp4362
+// THIS IS FOR mcp4462
 
-int address_select(int pot);
+int i2c_address_select(int pot);
 
 void init_mcp_i2c(int sda, int scl, i2c_inst_t* i2c, int baudrate, MCP_I2C* mcp) {
     gpio_set_function(scl, GPIO_FUNC_I2C);
@@ -30,15 +30,19 @@ D7:D0
 
     uint8_t control_byte = 0x58;
     int step = (ohms * 256 + 50000) / 100000;
-    uint16_t src = 0;
-    src |= (address_select(pot) << 12);
-    src |= step;
+    uint8_t write_byte = 0;
+    int address = i2c_address_select(pot);
+    write_byte |= (address << 4);
+    write_byte |= (step & 0x1FF);
+    uint8_t data_byte = 0;
+    data_byte |= step;
     i2c_write_blocking(mcp->i2c, 0, &control_byte, 1, true);
-    i2c_write_blocking(mcp->i2c, 0, &src, 2, true);
+    i2c_write_blocking(mcp->i2c, 0, &write_byte, 1, true);
+    i2c_write_blocking(mcp->i2c, 0, &data_byte, 1, true);
 
 }
 
-int address_select(int pot) {
+int i2c_address_select(int pot) {
     int address = 0;
     if (pot == 1){
         address = 1;
