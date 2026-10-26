@@ -24,7 +24,7 @@ template <typename T, size_t AMT> class SmallVec {
 
     // >= 0 = inline (value is the size)
     // <  0 = heap  (size is -(mSize + 1))
-    int64_t mSize;
+    int64_t mSize = 0;
     union {
         T mSmallBacking[AMT];
         struct {
@@ -90,6 +90,17 @@ template <typename T, size_t AMT> class SmallVec {
         }
         // Leave `other` empty and inline so it does not free the buffer we took.
         other.mSize = 0;
+    }
+
+    SmallVec(T const *begin, T const *end) : mSize(0) {
+        int64_t newsz = end - begin;
+        ensure_capacity(end - begin);
+        this->set_size_no_relocate(newsz);
+        auto thisarr = this->begin();
+        int j = 0;
+        for (auto i = begin; i != end; i++, j++) {
+            new (thisarr + j) T(*i);
+        }
     }
 
     SmallVec(const SmallVec &) = delete;
@@ -169,6 +180,7 @@ template <typename T, size_t AMT> class SmallVec {
                           : static_cast<int64_t>(mLargeBacking.capacity);
     }
 
+    uint64_t sizeu() const { return static_cast<uint64_t>(size()); }
     int64_t size() const { return is_local() ? mSize : -(mSize + 1); }
 
     T const *begin() const { return is_local() ? mSmallBacking : mLargeBacking.arr; }
