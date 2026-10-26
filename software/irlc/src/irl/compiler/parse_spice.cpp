@@ -174,7 +174,7 @@ struct Tokenizer {
 
 // WARN:
 // If you move this out of this file it can't be string views they don't own.
-typedef unordered_map<string_view, NetlistVertex *> NetNameMap;
+typedef unordered_map<string_view, NetlistVertexIdx> NetNameMap;
 typedef unordered_map<string_view, string_view> ModelMap;
 
 static inline void add_err(vector<ParseError> &errs, ParseError &&e) {
@@ -258,13 +258,13 @@ static inline optional<double> parse_spice_number(vector<ParseError> &errs, stri
 }
 
 template <NetlistVertexKind K>
-static inline NetlistVertex *add_empty(Netlist &netlist, string_view name) {
+static inline NetlistVertexIdx add_empty(Netlist &netlist, string_view name) {
     return netlist.new_vertex<K>(string(name), {});
 }
 
-static inline NetlistVertex *get_or_add_net(Netlist &netlist, NetNameMap &netnames,
-                                            string_view net_name) {
-    NetlistVertex *(*make_net)(Netlist &, string_view);
+static inline NetlistVertexIdx get_or_add_net(Netlist &netlist, NetNameMap &netnames,
+                                              string_view net_name) {
+    NetlistVertexIdx (*make_net)(Netlist &, string_view);
     string_view name;
 
     switch (get_net_kind(net_name)) {
@@ -297,13 +297,13 @@ static inline NetlistVertex *get_or_add_net(Netlist &netlist, NetNameMap &netnam
         return netnames[name];
     }
 
-    NetlistVertex *net = make_net(netlist, name);
+    NetlistVertexIdx net = make_net(netlist, name);
     netnames[name] = net;
     return net;
 }
 
-static inline NetlistVertex *create_numeric_node(Netlist &netlist, NetlistVertexKind kind,
-                                                 std::string &&name, double numeric) {
+static inline NetlistVertexIdx create_numeric_node(Netlist &netlist, NetlistVertexKind kind,
+                                                   std::string &&name, double numeric) {
     switch (kind) {
     case NetlistVertexKind::R:
         return netlist.new_vertex<R>(std::move(name), std::move(numeric));
@@ -311,12 +311,12 @@ static inline NetlistVertex *create_numeric_node(Netlist &netlist, NetlistVertex
         return netlist.new_vertex<C>(std::move(name), std::move(numeric));
     default:
         ASSERT(false, "Internal error: non-numeric created with create_numeric_node.");
-        return nullptr;
+        return {};
     }
 }
 
-static inline NetlistVertex *create_valuelesss_node(Netlist &netlist, NetlistVertexKind kind,
-                                                    std::string &&name) {
+static inline NetlistVertexIdx create_valuelesss_node(Netlist &netlist, NetlistVertexKind kind,
+                                                      std::string &&name) {
     switch (kind) {
     case NetlistVertexKind::OPAMP:
         return netlist.new_vertex<OPAMP>(std::move(name), {});
@@ -328,11 +328,11 @@ static inline NetlistVertex *create_valuelesss_node(Netlist &netlist, NetlistVer
         return netlist.new_vertex<Q_NPN>(std::move(name), {});
     default:
         ASSERT(false, "Internal error: non-valueless created with create_valuelesss_node");
-        return nullptr;
+        return {};
     }
 }
 
-static void connect_valueless(Netlist &netlist, NetlistVertex *v1, NetlistVertex *v2,
+static void connect_valueless(Netlist &netlist, NetlistVertexIdx v1, NetlistVertexIdx v2,
                               NetlistEdgeKind kind) {
 
 #define KIND_xbarPinId(NAME, ASSOCIATED_VERT_KIND)
@@ -428,7 +428,7 @@ void add_element(Netlist &netlist, vector<ParseError> &errs, NetNameMap &netname
             return;
         }
 
-        NetlistVertex *vert;
+        NetlistVertexIdx vert;
         if (recognized.numeric_value) {
             optional<double> val = parse_spice_number(errs, reference, filename, line);
             if (!val.has_value()) {
@@ -439,7 +439,7 @@ void add_element(Netlist &netlist, vector<ParseError> &errs, NetNameMap &netname
             vert = create_valuelesss_node(netlist, recognized.component_kind, string(reference));
         }
 
-        vert->reserve_pins(recognized.pins.size());
+        netlist[vert].reserve_pins(recognized.pins.size());
         for (int i = 0; i < recognized.pins.size(); i++) {
             auto pad = get_or_add_net(netlist, netnames, line[1 + i]->underlying);
             connect_valueless(netlist, vert, pad, recognized.pins[i]);
