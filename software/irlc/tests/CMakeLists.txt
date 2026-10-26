@@ -59,7 +59,9 @@ add_test(NAME irlcompiler-tests COMMAND irlcompiler-tests)
 # without tracking and would collide at link time).
 add_executable(irldriver-tests
     ${CMAKE_CURRENT_LIST_DIR}/test_translate_protobuf.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/test_topology_json.cpp
     ${IRLC_DIR}/src/irl/driver/translate_protobuf.cpp
+    ${IRLC_DIR}/src/irl/driver/topology_json.cpp
 )
 
 target_compile_definitions(irldriver-tests PRIVATE TRANSLATE_PROTO_TRACK_FIELDS)
@@ -75,6 +77,7 @@ target_link_libraries(irldriver-tests
     PRIVATE
         irlcore
         irlproto
+        nlohmann_json::nlohmann_json
         Catch2::Catch2WithMain
 )
 

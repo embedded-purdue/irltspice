@@ -6,6 +6,7 @@
 #include <array>
 #include <cstddef>
 #include <span>
+#include <string_view>
 
 #include "irl/netlist.hpp"
 #include "util/macros.hpp"
@@ -45,6 +46,25 @@ static inline NetlistVertexKind get_net_kind(auto &net_name) {
     }
     return NET;
 };
+
+static inline std::string_view get_net_canonical_name(NetlistVertexKind kind,
+                                                      std::string_view net_name) {
+    switch (kind) {
+    case NET:
+        return net_name;
+    case NET_SPECIAL:
+        return net_name;
+    case NET_V_GND:
+        return IRL_NET_V_GND_NAMES[0];
+    case NET_V_HIGH:
+        return IRL_NET_V_HIGH_NAMES[0];
+    case NET_V_NEG:
+        return IRL_NET_V_NEG_NAMES[0];
+    default:
+        detail::ASSERT(false, "Unhandled NET kind");
+        return "";
+    }
+}
 
 typedef struct _RecognizedComponent {
     // Identifying info

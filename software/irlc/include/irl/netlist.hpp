@@ -4,9 +4,12 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <optional>
 #include <span>
 #include <string_view>
 #include <type_traits>
+#include <unordered_map>
+#include <unordered_set>
 #include <utility>
 
 #include <irl/detail/smallvec.hpp>
@@ -18,6 +21,7 @@ struct NoData {};
 
 // Id for a motherboard. An index into the topology array
 using MotherId_t = uint8_t;
+static constexpr MotherId_t NO_MOTHERBOARD = std::numeric_limits<MotherId_t>::max();
 // Id for a daughterboard, or NO_DAUGHTERBOARD (indicating just the motherboard).
 // An index into corresponding motherboard's topology array
 using DaughterId_t = uint8_t;
@@ -97,6 +101,18 @@ union NetlistVertexValue {
     // Holds the next free NetlistVertexIdx when a vertex is on the free list.
     NetlistVertexIdx freeNext;
 };
+
+// Result of parse.
+// combinations:
+//  number != null - parse successful
+//  number == null && problematic_suffix.size()==0 - bad number
+//  number == null && problematic_suffix.size()!=0 - bad suffix
+struct NumericParseResult {
+    std::optional<double> number;
+    std::string_view problematic_suffix;
+};
+// Parse a number in the common spice format (suffixes + exps allowed)
+NumericParseResult NumericParseCommon(std::string_view number);
 
 // What kind of vertex this is
 // Each kind of vertex has a different associated value kind (see NetlistVertexValue)
@@ -191,12 +207,14 @@ template <NetlistVertexKind Kind> class VertKindInfo {};
 VERT_KINDS
 #undef VERT_KIND
 
+// Identifies a pin on a crossbar
 struct XbarPinId {
     enum class Side : uint8_t { ROW, COL };
     Side side;
     uint8_t index;
 };
 
+// A value held by an edge
 union NetlistEdgeValue {
     XbarPinId xbarPinId;
     uint32_t pinIndex;
@@ -357,6 +375,12 @@ template <bool IsConst> class NetlistVertexT {
     inline std::string_view name() const {
         auto const &mName = IRL_GET_CHECKED(mName);
         return std::string_view{mName.begin(), mName.sizeu()};
+    }
+    inline void rename(std::string_view new_name)
+        requires(!IsConst)
+    {
+        ASSERT(is_valid(), "Renamed invalid index.");
+        return mNetlist->rename_vertex(mIdx);
     }
 
     // If this vertex holds kind, return a pointer to its associated union field in
@@ -564,8 +588,29 @@ template <bool IsConst, template <bool> typename ValT> class SoAIterT {
 // edges are addressed by NetlistVertexIdx / NetlistEdgeIdx.
 // These can be used as inputs to operator[] here, which yields a NetlistVertex / NetlistEdge.
 class Netlist {
+    // Helper classes used to manage hashing
+    struct NamemapKey {
+        NetlistVertexIdx i;
+        std::string_view get(Netlist const *) const;
+    };
+    struct NamemapHash {
+        Netlist const *mNetlist;
+        using is_transparent = void; // Enables heterogeneous lookup
+        size_t operator()(NamemapKey k) const;
+        size_t operator()(std::string_view sv) const;
+    };
+    struct NamemapKeyEql {
+        Netlist const *mNetlist;
+        using is_transparent = void; // Enables heterogeneous lookup
+        bool operator()(NamemapKey lhs, NamemapKey rhs) const;
+        bool operator()(NamemapKey lhs, std::string_view rhs) const;
+        bool operator()(std::string_view lhs, NamemapKey rhs) const;
+    };
+
     NetlistVertex::Fields mVertices;
     NetlistEdge::Fields mEdges;
+
+    std::unordered_set<NamemapKey, NamemapHash, NamemapKeyEql> mVertexNames;
 
     NetlistVertexIdx alloc_vertex_slot();
     NetlistEdgeIdx alloc_edge_slot();
@@ -592,11 +637,12 @@ class Netlist {
     using EdgeIter = NetlistEdge::IterT;
     using MutEdgeIter = MutNetlistEdge::IterT;
 
-    Netlist() noexcept = default;
+    Netlist() noexcept
+        : mVertices(), mEdges(), mVertexNames(0, NamemapHash{this}, NamemapKeyEql{this}) {};
     Netlist(const Netlist &) = delete;
     Netlist &operator=(const Netlist &) = delete;
-    Netlist(Netlist &&other) noexcept;
-    Netlist &operator=(Netlist &&other) noexcept;
+    Netlist(Netlist &&other);
+    Netlist &operator=(Netlist &&other);
     ~Netlist();
 
     // Ensure room for at least `n` vertices / edges. Useful for bulk adds.
@@ -608,10 +654,20 @@ class Netlist {
     NetlistVertexIdx new_vertex(std::string_view name,
                                 VertKindInfo<newKind>::AssociatedData &&data);
 
+    // Create a new net. Asserts that VertKindIsNet(kind)==true
+    NetlistVertexIdx new_net(std::string_view name, NetlistVertexKind kind);
+
+    // Fetch a vertex from this netlist by name
+    std::optional<NetlistVertexIdx> get_vertex(std::string_view name) const;
+
+    // Rename a vertex
+    void rename_vertex(NetlistVertexIdx v, std::string_view new_name);
+
     // Connect to vertices
     template <NetlistEdgeKind KIND>
     NetlistEdgeIdx connect(NetlistVertexIdx v1, NetlistVertexIdx v2,
-                           EdgeKindInfo<KIND>::AssociatedData &&data);
+                           EdgeKindInfo<KIND>::AssociatedData &&data,
+                           double len = std::numeric_limits<double>::signaling_NaN());
 
     // Removes a vertex and all connections to it
     void remove(NetlistVertexIdx idx);
@@ -666,9 +722,18 @@ constexpr std::array VERT_IS_NET_TABLE = {VERT_KINDS};
 constexpr std::array VERT_NAME_TABLE = {VERT_KINDS};
 #undef VERT_KIND
 
+#define VERT_KIND(NAME, UNION_FIELD) VertKindInfo<NetlistVertexKind::NAME>::IsPort,
+constexpr std::array VERT_IS_PORT_TABLE = {VERT_KINDS};
+#undef VERT_KIND
+
 #define EDGE_KIND(NAME, ASSOCIATED_VERT_KIND, UNION_FIELD)                                         \
     EdgeKindInfo<NetlistEdgeKind::NAME>::Name,
 constexpr std::array EDGE_NAME_TABLE = {EDGE_KINDS};
+#undef EDGE_KIND
+
+// The vertex kind each edge kind attaches to, indexed by NetlistEdgeKind.
+#define EDGE_KIND(NAME, ASSOCIATED_VERT_KIND, UNION_FIELD) NetlistVertexKind::ASSOCIATED_VERT_KIND,
+constexpr std::array EDGE_ASSOCIATED_VERT_TABLE = {EDGE_KINDS};
 #undef EDGE_KIND
 
 inline NetlistVertexFields *get_v_fields(Netlist *n) { return &n->mVertices; }
@@ -684,10 +749,16 @@ inline NetlistEdgeFields const *get_e_fields(Netlist const *n) { return &n->mEdg
 
 inline constexpr bool VertKindIsNet(NetlistVertexKind kind) { return kind <= detail::LAST_NET; }
 
+std::optional<NetlistVertexKind> VertKindFromName(std::string_view name);
 inline constexpr std::string_view VertKindName(NetlistVertexKind kind) {
     return detail::VERT_NAME_TABLE[static_cast<size_t>(kind)];
 }
 
+inline constexpr bool VertKindIsPort(NetlistVertexKind kind) {
+    return detail::VERT_IS_PORT_TABLE[static_cast<size_t>(kind)];
+}
+
+std::optional<NetlistEdgeKind> EdgeKindFromName(std::string_view name);
 inline constexpr std::string_view EdgeKindName(NetlistEdgeKind kind) {
     return detail::EDGE_NAME_TABLE[static_cast<size_t>(kind)];
 }
