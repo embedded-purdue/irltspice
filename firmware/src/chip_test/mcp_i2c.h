@@ -7,9 +7,7 @@ typedef struct {
     i2c_inst_t *i2c;
 } MCP_I2C;
 
-int address_select(int pot);
-void init_mcp_i2c(int sda, int scl, i2c_inst_t* i2c, int baudrate, MCP_I2C* mcp);
-void set_resistance(int ohms, MCP_I2C* mcp, int pot);
-int i2c_address_select(int pot);
+void mcp_i2c_init(int sda, int scl, i2c_inst_t *i2c, int baudrate, MCP_I2C *mcp);
+void mcp_i2c_set_resistance(int ohms, MCP_I2C *mcp, int pot);
 
 #endif
