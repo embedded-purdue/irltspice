@@ -3,15 +3,20 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <iterator>
 #include <limits>
 #include <memory>
 #include <new>
+#include <optional>
 #include <string>
 #include <utility>
 
+#include "fast_float/fast_float.h"
 #include "irl/detail/smallvec.hpp"
+#include "irl/detail/util.hpp"
 
 using namespace irl;
+using detail::ASSERT;
 using detail::EdgeList;
 using detail::SmallStr;
 using detail::SmallVec;
@@ -49,16 +54,24 @@ void free_edge_fields(detail::NetlistEdgeFields &e) noexcept {
 
 Netlist::~Netlist() { destroy_all(); }
 
-Netlist::Netlist(Netlist &&other) noexcept : mVertices(other.mVertices), mEdges(other.mEdges) {
+Netlist::Netlist(Netlist &&other)
+    : mVertices(other.mVertices), mEdges(other.mEdges),
+      mVertexNames(std::make_move_iterator(other.mVertexNames.begin()),
+                   std::make_move_iterator(other.mVertexNames.end()), 0, NamemapHash{this},
+                   NamemapKeyEql{this}) {
     other.mVertices = {};
     other.mEdges = {};
+    other.mVertexNames.clear();
 }
 
-Netlist &Netlist::operator=(Netlist &&other) noexcept {
+Netlist &Netlist::operator=(Netlist &&other) {
     if (this != &other) {
         destroy_all();
         mVertices = other.mVertices;
         mEdges = other.mEdges;
+        mVertexNames = std::unordered_set{std::make_move_iterator(other.mVertexNames.begin()),
+                                          std::make_move_iterator(other.mVertexNames.end()), 0,
+                                          NamemapHash{this}, NamemapKeyEql{this}};
         other.mVertices = {};
         other.mEdges = {};
     }
@@ -67,6 +80,7 @@ Netlist &Netlist::operator=(Netlist &&other) noexcept {
 
 // Destroy every live element and release all column storage.
 void Netlist::destroy_all() noexcept {
+    mVertexNames.clear();
 #define FIELD(T, N) std::destroy_at(arr.N + i);
     {
         auto arr = mVertices;
@@ -249,12 +263,40 @@ NetlistVertexIdx Netlist::new_vertex(std::string_view name,
               << " with sz:" << mVertices.size << "\n";
     // Initialize the vertex but leave the union just default initialized
     init_vert(&mVertices, idx, newKind, SmallStr{name.begin(), name.end()}, {}, EdgeList{});
+
+    // Got to make sure the string view comes from the backing store we own
+    auto const &string_owned = mVertices.mName_arr[idx.value];
+
+    auto [iter, inserted] = mVertexNames.insert(NamemapKey{idx});
+    auto o = std::string("Attempted to create 2 vertices with the same name. Old idx: ");
+    o += iter->i.value;
+    o += "\n";
+    ASSERT(inserted, o.c_str());
     // And initialize the enum in place later
     auto loc = mVertices.mValue_arr + idx.value;
     new (&(loc->*VertKindInfo<newKind>::AssociatedField))
         VertKindInfo<newKind>::AssociatedData(std::move(data));
     return idx;
 }
+
+NetlistVertexIdx Netlist::new_net(std::string_view name, NetlistVertexKind kind) {
+    switch (kind) {
+    case NetlistVertexKind::NET:
+        return new_vertex<NetlistVertexKind::NET>(name, NoData{});
+    case NetlistVertexKind::NET_SPECIAL:
+        return new_vertex<NetlistVertexKind::NET_SPECIAL>(name, NoData{});
+    case NetlistVertexKind::NET_V_GND:
+        return new_vertex<NetlistVertexKind::NET_V_GND>(name, NoData{});
+    case NetlistVertexKind::NET_V_HIGH:
+        return new_vertex<NetlistVertexKind::NET_V_HIGH>(name, NoData{});
+    case NetlistVertexKind::NET_V_NEG:
+        return new_vertex<NetlistVertexKind::NET_V_NEG>(name, NoData{});
+    default:
+        ASSERT(false, "Unhandled NET kind");
+        return {};
+    }
+}
+
 // Explicitly instantiate
 #define VERT_KIND(NAME, UNION_FIELD)                                                               \
     template NetlistVertexIdx Netlist::new_vertex<NetlistVertexKind::NAME>(                        \
@@ -264,12 +306,12 @@ VERT_KINDS
 
 template <NetlistEdgeKind KIND>
 NetlistEdgeIdx Netlist::connect(NetlistVertexIdx v1_i, NetlistVertexIdx v2_i,
-                                EdgeKindInfo<KIND>::AssociatedData &&data) {
+                                EdgeKindInfo<KIND>::AssociatedData &&data, double len) {
     MutNetlistVertex v1 = (*this)[v1_i];
     MutNetlistVertex v2 = (*this)[v2_i];
 
-    detail::ASSERT(v1.is_valid(), "Attempted to connect to a null/removed vertex.");
-    detail::ASSERT(v2.is_valid(), "Attempted to connect to a null/removed vertex.");
+    ASSERT(v1.is_valid(), "Attempted to connect to a null/removed vertex.");
+    ASSERT(v2.is_valid(), "Attempted to connect to a null/removed vertex.");
 
     const NetlistVertexKind k1 = v1.kind();
     const NetlistVertexKind k2 = v2.kind();
@@ -278,21 +320,20 @@ NetlistEdgeIdx Netlist::connect(NetlistVertexIdx v1_i, NetlistVertexIdx v2_i,
     MutNetlistVertex net;
 
     if (VertKindIsNet(k1)) {
-        detail::ASSERT(!VertKindIsNet(k2), "Attempted to connect two nets.");
+        ASSERT(!VertKindIsNet(k2), "Attempted to connect two nets.");
         net = v1;
         component = v2;
     } else {
-        detail::ASSERT(VertKindIsNet(k2), "Attempted to connect two components. Use a net.");
+        ASSERT(VertKindIsNet(k2), "Attempted to connect two components. Use a net.");
         net = v2;
         component = v1;
     }
 
-    detail::ASSERT(component.kind() == EdgeKindInfo<KIND>::AssociatedVertKind,
-                   "Attempted to connect an edge to a non-matching component.");
+    ASSERT(component.kind() == EdgeKindInfo<KIND>::AssociatedVertKind,
+           "Attempted to connect an edge to a non-matching component.");
 
     NetlistEdgeIdx e = alloc_edge_slot();
-    init_edge(&mEdges, e, KIND, component.idx(), net.idx(),
-              std::numeric_limits<double>::signaling_NaN(), {});
+    init_edge(&mEdges, e, KIND, component.idx(), net.idx(), std::move(len), {});
 
     using Data = typename EdgeKindInfo<KIND>::AssociatedData;
     NetlistEdgeValue *val = mEdges.mValue_arr + e.value;
@@ -307,9 +348,47 @@ NetlistEdgeIdx Netlist::connect(NetlistVertexIdx v1_i, NetlistVertexIdx v2_i,
 #define EDGE_KIND(NAME, ASSOCIATED_VERT_KIND, UNION_FIELD)                                         \
     template NetlistEdgeIdx Netlist::connect<NetlistEdgeKind::NAME>(                               \
         NetlistVertexIdx, NetlistVertexIdx,                                                        \
-        EdgeKindInfo<NetlistEdgeKind::NAME>::AssociatedData &&);
+        EdgeKindInfo<NetlistEdgeKind::NAME>::AssociatedData &&, double);
 EDGE_KINDS
 #undef EDGE_KIND
+
+std::string_view Netlist::NamemapKey::get(Netlist const *n) const {
+    SmallStr const &str = (n->mVertices.mName_arr)[i.value];
+    return {str.begin(), str.end()};
+}
+size_t Netlist::NamemapHash::operator()(NamemapKey k) const {
+    return std::hash<std::string_view>{}(k.get(mNetlist));
+}
+size_t Netlist::NamemapHash::operator()(std::string_view sv) const {
+    return std::hash<std::string_view>{}(sv);
+}
+bool Netlist::NamemapKeyEql::operator()(NamemapKey lhs, NamemapKey rhs) const {
+    return lhs.get(mNetlist) == rhs.get(mNetlist);
+}
+bool Netlist::NamemapKeyEql::operator()(NamemapKey lhs, std::string_view rhs) const {
+    return lhs.get(mNetlist) == rhs;
+}
+bool Netlist::NamemapKeyEql::operator()(std::string_view lhs, NamemapKey rhs) const {
+    return lhs == rhs.get(mNetlist);
+}
+
+// Fetch a vertex from this netlist by name
+std::optional<NetlistVertexIdx> Netlist::get_vertex(std::string_view name) const {
+    if (mVertexNames.contains(name)) {
+        return mVertexNames.find(name)->i;
+    } else {
+        return std::nullopt;
+    }
+}
+
+void Netlist::rename_vertex(NetlistVertexIdx v, std::string_view new_name) {
+    NamemapKey k{v};
+    ASSERT(mVertexNames.contains(k), "Vertex not in name map");
+    ASSERT(!mVertexNames.contains(new_name), "Renaming to existing name");
+    mVertexNames.erase(k);
+    mVertices.mName_arr[v.value] = SmallStr(new_name.begin(), new_name.end());
+    mVertexNames.insert(k);
+}
 
 // =================
 // Removal
@@ -357,6 +436,10 @@ void Netlist::remove(NetlistVertexIdx idx) {
         destroy_edge(e);
     }
 
+    NamemapKey k{idx};
+    ASSERT(mVertexNames.contains(k), "Deleted vert not in namemap");
+    mVertexNames.erase(k);
+
 #define FIELD(T, N) std::destroy_at(mVertices.N + idx.value);
     VERTEX_FIELDS
 #undef FIELD
@@ -365,3 +448,65 @@ void Netlist::remove(NetlistVertexIdx idx) {
     mVertices.mValue_arr[idx.value].freeNext = mVertices.freeHead;
     mVertices.freeHead = idx;
 }
+
+namespace irl {
+// Helpers
+//
+std::optional<NetlistVertexKind> VertKindFromName(std::string_view name) {
+    for (size_t i = 0; i < detail::VERT_NAME_TABLE.size(); ++i) {
+        if (detail::VERT_NAME_TABLE[i] == name) {
+            return static_cast<NetlistVertexKind>(i);
+        }
+    }
+    return std::nullopt;
+}
+
+std::optional<NetlistEdgeKind> EdgeKindFromName(std::string_view name) {
+    for (size_t i = 0; i < detail::EDGE_NAME_TABLE.size(); ++i) {
+        if (detail::EDGE_NAME_TABLE[i] == name) {
+            return static_cast<NetlistEdgeKind>(i);
+        }
+    }
+    return std::nullopt;
+}
+
+NumericParseResult NumericParseCommon(std::string_view num) {
+    using namespace std;
+
+    const string_view numbers("0123456789");
+
+    constexpr array<pair<const char *, double>, 11> multipliers{
+        pair{"T", 10e12},     pair{"G", 10e9},   pair{"Meg", 10e6}, pair{"K", 10e3},
+        pair{"mil", 25.4e-6}, pair{"m", 10e-3},  pair{"u", 10e-6},  pair{"n", 10e-9},
+        pair{"p", 10e-12},    pair{"f", 10e-15}, pair{"a", 10e-18}};
+
+    double multiplier = 1;
+    double value = 0;
+    fast_float::from_chars_result result = fast_float::from_chars(num.begin(), num.end(), value);
+
+    if (result.ec == std::errc{}) {
+        string_view suffix{result.ptr, (&num[num.size() - 1]) + 1};
+        if (suffix.size() == 0) {
+            multiplier = 1;
+        } else {
+            for (auto const &m : multipliers) {
+                if (suffix == m.first) {
+                    multiplier = m.second;
+                    break;
+                }
+            }
+            if (multiplier == 1) {
+                return {
+                    nullopt,
+                    suffix,
+                };
+            }
+        }
+    } else {
+        return {nullopt, {}};
+    }
+
+    return {value, {}};
+}
+
+} // namespace irl

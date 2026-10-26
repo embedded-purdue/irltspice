@@ -78,6 +78,16 @@ CPMAddPackage(
   GIT_TAG v8.3.2
 )
 
+# nlohmann/json
+# Board topology templates are authored as JSON (with `//` comments). Kept out
+# of the public `include/` tree; only the driver's private headers/files use it.
+CPMAddPackage(
+    NAME nlohmann_json
+    VERSION 3.12.0
+    URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz
+    URL_HASH SHA256=42f6e95cad6ec532fd372391373363b62a14af6d771056dbfc86160e6dfff7aa
+)
+
 # =======
 # Targets
 # =======
@@ -107,6 +117,7 @@ target_include_directories(irlcore
     PUBLIC  ${IRLC_DIR}/include
     PRIVATE ${IRLC_DIR}/src
 )
+target_link_libraries(irlcore PRIVATE fast_float)
 
 # --- irlcompiler : stateless parsing/verification/routing. Depends on netlist. ---
 add_library(irlcompiler OBJECT
@@ -137,12 +148,14 @@ target_link_libraries(irlproto PUBLIC protobuf::libprotobuf)
 add_library(irldriver OBJECT
     ${IRLC_DIR}/src/irl/driver.cpp
     ${IRLC_DIR}/src/irl/driver/translate_protobuf.cpp
+    ${IRLC_DIR}/src/irl/driver/topology_json.cpp
 )
 target_include_directories(irldriver
     PUBLIC ${IRLC_DIR}/include
     PRIVATE ${IRLC_DIR}/src
 )
 target_link_libraries(irldriver PUBLIC irlcore irlproto Boost::asio Boost::outcome)
+target_link_libraries(irldriver PRIVATE nlohmann_json::nlohmann_json)
 
 # --- libirlc.a : the single artifact end users link. ---
 add_library(irlc STATIC)

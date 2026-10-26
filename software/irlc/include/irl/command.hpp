@@ -56,18 +56,19 @@ struct FirmwareVersion {
     uint8_t patch;
 };
 
+// X-Macro listing the daughterboard kinds (name, wire value). The driver uses
+// it to generate the JSON <-> kind mapping, so add new kinds here.
+#define IRL_DAUGHTERBOARD_KINDS(X)                                                                 \
+    X(NOT_PRESENT, 0)                                                                              \
+    X(BASIC_V1, 1)                                                                                 \
+    X(TESTING_V1, 2)                                                                               \
+    X(DIODE_V1, 3)                                                                                 \
+    X(UNKNOWN, UINT32_MAX)
+
 enum class DaughterboardKind : uint32_t {
-    // No daughterboard present in this slot
-    NOT_PRESENT = 0,
-    // The basic, default daughterboard
-    BASIC_V1,
-    // The testing daughterboard
-    TESTING_V1,
-    // The diode daughterboard
-    DIODE_V1,
-    // An unknown kind.
-    // Indicates you should update this library
-    UNKNOWN = UINT32_MAX,
+#define IRL_DAUGHTERBOARD_KIND(NAME, VALUE) NAME = VALUE,
+    IRL_DAUGHTERBOARD_KINDS(IRL_DAUGHTERBOARD_KIND)
+#undef IRL_DAUGHTERBOARD_KIND
 };
 
 // Topology information about a daughterboard slot
