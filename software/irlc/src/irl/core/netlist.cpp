@@ -2,11 +2,8 @@
 
 #include <cstdlib>
 #include <cstring>
-#include <iostream>
 #include <iterator>
-#include <limits>
 #include <memory>
-#include <new>
 #include <optional>
 #include <string>
 #include <utility>
@@ -74,6 +71,7 @@ Netlist &Netlist::operator=(Netlist &&other) {
                                           NamemapHash{this}, NamemapKeyEql{this}};
         other.mVertices = {};
         other.mEdges = {};
+        other.mVertexNames.clear();
     }
     return *this;
 }
@@ -132,14 +130,12 @@ void Netlist::reserve_edges(sNetlistIdx_t newcap) {
 // list, then grow. `size` is a high-water mark and never decreases.
 NetlistVertexIdx Netlist::alloc_vertex_slot() {
     if (mVertices.size < mVertices.capacity) {
-        std::cout << "got room!\n";
         return NetlistVertexIdx{static_cast<netlistIdx_t>(mVertices.size++)};
     } else if (!mVertices.freeHead.is_null()) {
         NetlistVertexIdx idx = mVertices.freeHead;
         mVertices.freeHead = NetlistVertexIdx{mVertices.mValue_arr[idx.value].freeNext};
         return idx;
     } else {
-        std::cout << "no room, reserving!\n";
         reserve_vertices(mVertices.capacity == 0 ? MINIMUM_VERT_AMT : mVertices.capacity * 2);
         return NetlistVertexIdx{static_cast<netlistIdx_t>(mVertices.size++)};
     }
@@ -259,8 +255,6 @@ NetlistVertexIdx Netlist::new_vertex(std::string_view name,
                                      VertKindInfo<newKind>::AssociatedData &&data) {
     // Alloc a slot
     NetlistVertexIdx idx = alloc_vertex_slot();
-    std::cout << "Newing vert: " << name << " at idx: " << idx.value
-              << " with sz:" << mVertices.size << "\n";
     // Initialize the vertex but leave the union just default initialized
     init_vert(&mVertices, idx, newKind, SmallStr{name.begin(), name.end()}, {}, EdgeList{});
 
@@ -374,18 +368,22 @@ bool Netlist::NamemapKeyEql::operator()(std::string_view lhs, NamemapKey rhs) co
 
 // Fetch a vertex from this netlist by name
 std::optional<NetlistVertexIdx> Netlist::get_vertex(std::string_view name) const {
-    if (mVertexNames.contains(name)) {
-        return mVertexNames.find(name)->i;
-    } else {
+    auto it = mVertexNames.find(name);
+    if (it == mVertexNames.end()) {
         return std::nullopt;
     }
+    return it->i;
 }
 
 void Netlist::rename_vertex(NetlistVertexIdx v, std::string_view new_name) {
     NamemapKey k{v};
-    ASSERT(mVertexNames.contains(k), "Vertex not in name map");
+    auto self = mVertexNames.find(k);
+    ASSERT(self != mVertexNames.end(), "Vertex not in name map");
+    if (self->get(this) == new_name) {
+        return;
+    }
     ASSERT(!mVertexNames.contains(new_name), "Renaming to existing name");
-    mVertexNames.erase(k);
+    mVertexNames.erase(self);
     mVertices.mName_arr[v.value] = SmallStr(new_name.begin(), new_name.end());
     mVertexNames.insert(k);
 }

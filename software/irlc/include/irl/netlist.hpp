@@ -8,7 +8,6 @@
 #include <span>
 #include <string_view>
 #include <type_traits>
-#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 
@@ -379,8 +378,8 @@ template <bool IsConst> class NetlistVertexT {
     inline void rename(std::string_view new_name)
         requires(!IsConst)
     {
-        ASSERT(is_valid(), "Renamed invalid index.");
-        return mNetlist->rename_vertex(mIdx);
+        detail::ASSERT(is_valid(), "Renamed invalid index.");
+        mNetlist->rename_vertex(mIdx, new_name);
     }
 
     // If this vertex holds kind, return a pointer to its associated union field in

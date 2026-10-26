@@ -173,7 +173,7 @@ SpstId spstIdFromJson(nlohmann::json const &j) {
     out.sw_id = static_cast<uint8_t>(jsonToU32(j.at("sw_id")));
     out.ic_id = static_cast<uint8_t>(jsonToU32(j.at("ic_id")));
     out.daughter_id = NO_DAUGHTERBOARD;
-    out.mother_id = -1;
+    out.mother_id = NO_MOTHERBOARD;
     return out;
 }
 
@@ -246,6 +246,7 @@ NetlistVertexIdx ParseCtx::addComponent(std::string_view name, nlohmann::json co
     NetlistVertexKind kind = componentKindFromJson(compJson.at("kind"));
 
     ASSERT(!VertKindIsPort(kind), "Added port in component list.");
+    ASSERT(!VertKindIsNet(kind), "Added net in component list.");
 
     return addVertInner(name, kind, compJson);
 }
@@ -255,6 +256,7 @@ NetlistVertexIdx ParseCtx::addPort(std::string_view name, nlohmann::json const &
     NetlistVertexKind kind = portKindFromJson(portJson.at("kind"));
 
     ASSERT(VertKindIsPort(kind), "Added component in port list.");
+    ASSERT(!VertKindIsNet(kind), "Added net in port list.");
 
     return addVertInner(name, kind, portJson);
 }
@@ -276,8 +278,6 @@ NetlistVertexIdx ParseCtx::addVertInner(std::string_view name, NetlistVertexKind
     }
 
 #undef VERT_KIND
-
-    MutNetlistVertex v = (*netlist)[idx];
 
     for (auto const &pinJson : vertJson.at("pins")) {
         addPinAndNet(idx, pinJson);
@@ -315,7 +315,7 @@ BoardTemplate parseBoardTemplate(nlohmann::json const &doc) {
     }
 
     for (auto const &[name, portJson] : topo.at("ports").items()) {
-        ctx.addPort(name, portJson);
+        out.ports.push_back(ctx.addPort(name, portJson));
     }
 
     return out;
