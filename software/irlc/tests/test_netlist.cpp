@@ -181,3 +181,98 @@ TEST_CASE("Removed slots are reused once the pool is at capacity", "[netlist]") 
     REQUIRE(reused == removed);
     REQUIRE(nl[reused].name() == "new");
 }
+
+TEST_CASE("Name map tracks create, rename, remove, and move", "[netlist]") {
+    Netlist nl;
+    auto a = nl.new_vertex<NetlistVertexKind::NET>(std::string("a"), NoData{});
+    auto r = nl.new_vertex<NetlistVertexKind::R>(std::string("R1"), 10.0);
+
+    REQUIRE(*nl.get_vertex("a") == a);
+    REQUIRE(*nl.get_vertex("R1") == r);
+    REQUIRE_FALSE(nl.get_vertex("missing").has_value());
+
+    // Rename through the handle, including the same-name no-op.
+    nl[a].rename("b");
+    REQUIRE_FALSE(nl.get_vertex("a").has_value());
+    REQUIRE(*nl.get_vertex("b") == a);
+    REQUIRE(nl[a].name() == "b");
+    nl[a].rename("b");
+    REQUIRE(*nl.get_vertex("b") == a);
+
+    // Removal leaves no stale name behind; the old name can be reused.
+    nl.remove(a);
+    REQUIRE_FALSE(nl.get_vertex("b").has_value());
+    auto b = nl.new_vertex<NetlistVertexKind::NET>(std::string("b"), NoData{});
+    REQUIRE(*nl.get_vertex("b") == b);
+
+    // Moving must rebind the name map to the destination's storage.
+    Netlist moved = std::move(nl);
+    REQUIRE(*moved.get_vertex("b") == b);
+    REQUIRE(*moved.get_vertex("R1") == r);
+    REQUIRE_FALSE(nl.get_vertex("b").has_value());
+    REQUIRE_FALSE(nl.get_vertex("R1").has_value());
+}
+
+TEST_CASE("Vertex growth relocates live data and preserves the free list", "[netlist]") {
+    Netlist nl;
+    nl.reserve_vertices(4);
+
+    std::vector<std::string> names;
+    std::vector<NetlistVertexIdx> ids;
+    for (int i = 0; i < 4; ++i) {
+        // Longer than SmallStr's inline capacity, so this exercises the heap path.
+        names.push_back("a_vertex_name_that_is_longer_than_inline_" + std::to_string(i));
+        ids.push_back(nl.new_vertex<NetlistVertexKind::NET>(names.back(), NoData{}));
+    }
+
+    nl.remove(ids[1]);
+    nl.remove(ids[2]);
+
+    // Force growth with tombstones present.
+    nl.reserve_vertices(8);
+
+    REQUIRE(nl[ids[0]].name() == names[0]);
+    REQUIRE(nl[ids[3]].name() == names[3]);
+    REQUIRE_FALSE(nl[ids[1]].is_valid());
+    REQUIRE_FALSE(nl[ids[2]].is_valid());
+
+    // Fill the new capacity. The next two allocations must reuse the tombstones.
+    for (int i = 0; i < 4; ++i) {
+        nl.new_vertex<NetlistVertexKind::NET>(std::string("filler") + std::to_string(i), NoData{});
+    }
+
+    auto reused0 = nl.new_vertex<NetlistVertexKind::NET>(std::string("reused0"), NoData{});
+    auto reused1 = nl.new_vertex<NetlistVertexKind::NET>(std::string("reused1"), NoData{});
+    REQUIRE(reused0 == ids[2]);
+    REQUIRE(reused1 == ids[1]);
+}
+
+TEST_CASE("Edge growth relocates live data and preserves the free list", "[netlist]") {
+    Netlist nl;
+    nl.reserve_edges(2);
+
+    auto a = nl.new_vertex<NetlistVertexKind::NET>(std::string("a"), NoData{});
+    auto b = nl.new_vertex<NetlistVertexKind::NET>(std::string("b"), NoData{});
+    auto c = nl.new_vertex<NetlistVertexKind::NET>(std::string("c"), NoData{});
+    auto r = nl.new_vertex<NetlistVertexKind::R>(std::string("R1"), 1.0);
+
+    auto live = nl.connect<NetlistEdgeKind::PIN_R>(r, a, NoData{}, 1.25);
+    auto tombstone = nl.connect<NetlistEdgeKind::PIN_R>(r, b, NoData{}, 2.5);
+    nl.remove(b);
+    REQUIRE_FALSE(nl[tombstone].is_valid());
+
+    // Force growth with a tombstoned edge present.
+    nl.reserve_edges(4);
+
+    REQUIRE(nl[live].kind() == NetlistEdgeKind::PIN_R);
+    REQUIRE(nl[live].net().name() == "a");
+    REQUIRE(nl[live].trace_length() == 1.25);
+
+    nl.connect<NetlistEdgeKind::PIN_R>(r, c, NoData{}, 3.5);
+    auto r2 = nl.new_vertex<NetlistVertexKind::R>(std::string("R2"), 2.0);
+    nl.connect<NetlistEdgeKind::PIN_R>(r2, a, NoData{}, 4.5);
+
+    auto reused = nl.connect<NetlistEdgeKind::PIN_R>(r2, c, NoData{}, 5.5);
+    REQUIRE(reused == tombstone);
+    REQUIRE(nl[reused].trace_length() == 5.5);
+}
