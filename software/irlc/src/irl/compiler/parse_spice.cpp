@@ -207,54 +207,33 @@ static inline optional<double> parse_spice_number(vector<ParseError> &errs, stri
 
     string_view num = val_token->underlying;
 
-    const string_view numbers("0123456789");
+    auto result = NumericParseCommon(num);
 
-    constexpr array<pair<const char *, double>, 11> multipliers{
-        pair{"T", 10e12},     pair{"G", 10e9},   pair{"Meg", 10e6}, pair{"K", 10e3},
-        pair{"mil", 25.4e-6}, pair{"m", 10e-3},  pair{"u", 10e-6},  pair{"n", 10e-9},
-        pair{"p", 10e-12},    pair{"f", 10e-15}, pair{"a", 10e-18}};
-
-    double multiplier = 1;
-    double value = 0;
-    fast_float::from_chars_result result = fast_float::from_chars(num.begin(), num.end(), value);
-
-    if (result.ec == std::errc{}) {
-        string_view suffix{result.ptr, (&num[num.size() - 1]) + 1};
-        if (suffix.size() == 0) {
-            multiplier = 1;
+    if (!result.number.has_value()) {
+        if (result.problematic_suffix.size() == 0) {
+            auto suffix = result.problematic_suffix;
+            add_err(errs, ParseError{
+                              .message = string("Component: ") + string(reference) +
+                                         " , has bad value. Unrecognizes suffix: \"" +
+                                         string(suffix) + "\"",
+                              .problematic_region = suffix,
+                              .file_name = filename,
+                              .lines_begin = val_token->line_number,
+                              .lines_end = val_token->line_number,
+                          });
         } else {
-            for (auto const &m : multipliers) {
-                if (suffix == m.first) {
-                    multiplier = m.second;
-                    break;
-                }
-            }
-            if (multiplier == 1) {
-                add_err(errs, ParseError{
-                                  .message = string("Component: ") + string(reference) +
-                                             " , has bad value. Unrecognizes suffix: \"" +
-                                             string(suffix) + "\"",
-                                  .problematic_region = suffix,
-                                  .file_name = filename,
-                                  .lines_begin = val_token->line_number,
-                                  .lines_end = val_token->line_number,
-                              });
-                return nullopt;
-            }
+            add_err(errs, ParseError{
+                              .message = string("Component: ") + string(reference) +
+                                         " , has bad value. Couldn't parse number",
+                              .problematic_region = val_token->underlying,
+                              .file_name = filename,
+                              .lines_begin = val_token->line_number,
+                              .lines_end = val_token->line_number,
+                          });
         }
-    } else {
-        add_err(errs, ParseError{
-                          .message = string("Component: ") + string(reference) +
-                                     " , has bad value. Couldn't parse number",
-                          .problematic_region = val_token->underlying,
-                          .file_name = filename,
-                          .lines_begin = val_token->line_number,
-                          .lines_end = val_token->line_number,
-                      });
-        return nullopt;
     }
 
-    return value;
+    return result.number;
 }
 
 template <NetlistVertexKind K>
@@ -262,43 +241,17 @@ static inline NetlistVertexIdx add_empty(Netlist &netlist, string_view name) {
     return netlist.new_vertex<K>(string(name), {});
 }
 
-static inline NetlistVertexIdx get_or_add_net(Netlist &netlist, NetNameMap &netnames,
-                                              string_view net_name) {
+static inline NetlistVertexIdx get_or_add_net(Netlist &netlist, string_view net_name) {
     NetlistVertexIdx (*make_net)(Netlist &, string_view);
-    string_view name;
+    NetlistVertexKind kind = get_net_kind(net_name);
+    string_view name = get_net_canonical_name(kind, net_name);
 
-    switch (get_net_kind(net_name)) {
-    case NET:
-        name = net_name;
-        make_net = add_empty<NET>;
-        break;
-    case NET_SPECIAL:
-        name = net_name;
-        make_net = add_empty<NET_SPECIAL>;
-        break;
-    case NET_V_GND:
-        name = IRL_NET_V_GND_NAMES[0];
-        make_net = add_empty<NET_V_GND>;
-        break;
-    case NET_V_HIGH:
-        name = IRL_NET_V_HIGH_NAMES[0];
-        make_net = add_empty<NET_V_HIGH>;
-        break;
-    case NET_V_NEG:
-        name = IRL_NET_V_NEG_NAMES[0];
-        make_net = add_empty<NET_V_NEG>;
-        break;
-    default:
-        ASSERT(false, "Unhandled NET kind");
-        break;
+    auto net_o = netlist.get_vertex(name);
+    if (net_o.has_value()) {
+        return *net_o;
     }
 
-    if (netnames.contains(name)) {
-        return netnames[name];
-    }
-
-    NetlistVertexIdx net = make_net(netlist, name);
-    netnames[name] = net;
+    NetlistVertexIdx net = netlist.new_net(name, kind);
     return net;
 }
 
@@ -353,7 +306,7 @@ static void connect_valueless(Netlist &netlist, NetlistVertexIdx v1, NetlistVert
 #undef EDGE_KIND
 }
 
-void add_element(Netlist &netlist, vector<ParseError> &errs, NetNameMap &netnames, ModelMap &models,
+void add_element(Netlist &netlist, vector<ParseError> &errs, ModelMap &models,
                  const vector<Token *> &line, string_view filename) {
     if (line.size() < 2) {
         add_err(errs, ParseError{.message = "Malformed component line. Must have at least a "
@@ -441,7 +394,7 @@ void add_element(Netlist &netlist, vector<ParseError> &errs, NetNameMap &netname
 
         netlist[vert].reserve_pins(recognized.pins.size());
         for (int i = 0; i < recognized.pins.size(); i++) {
-            auto pad = get_or_add_net(netlist, netnames, line[1 + i]->underlying);
+            auto pad = get_or_add_net(netlist, line[1 + i]->underlying);
             connect_valueless(netlist, vert, pad, recognized.pins[i]);
         }
 
@@ -493,7 +446,6 @@ ParseResult SpiceParser::try_parse(std::string_view file_contents,
         }
     }
 
-    NetNameMap netnames{};
     ModelMap models{};
 
     Token *tok = &tokens[0];
@@ -554,7 +506,7 @@ ParseResult SpiceParser::try_parse(std::string_view file_contents,
             }
         } else {
             size_t error_len = errors.size();
-            add_element(*netlist, errors, netnames, models, line, file_name);
+            add_element(*netlist, errors, models, line, file_name);
             if (mOpts.should_verbose_parse) {
                 if (error_len == errors.size()) {
                     mOpts.log_fd << " Added!\n";

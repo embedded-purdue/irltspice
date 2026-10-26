@@ -70,6 +70,20 @@ and `"ports"` sections. Built-in mother/daughter topologies live in
 `"dest"`, carries the edge's kind-specific `"data"` (for example `"side"`/`"index"` for a crossbar
 row/column), and gives the pin's trace length in `"len"`.
 
+The document is turned into public `irl` types by `src/irl/driver/topology_json.{hpp,cpp}` (part of
+the driver library): `parseJsonc` for comment-tolerant parsing, small constructor functions such as
+`xbarPinIdFromJson`, and `parseBoardTemplate` for the whole template. Most string -> enum mapping is
+generated from the x-macros (`VERT_KINDS`, `EDGE_KINDS`, `XBAR_PIN_SIDES`,
+`IRL_DAUGHTERBOARD_KINDS`), so a new kind gains a JSON spelling automatically; port pin kinds are
+derived from the port kind and side (`portPinKind`). nlohmann/json is an implementation detail and
+never appears in a public header.
+
+A region of a template can be modified for one physical board without editing the base template by
+registering an RFC 6902 patch under the board's serial number. `applyBoardPatch` selects the
+`"mother"`/`"daughter"` registry from a `{ "mother": {"<unique_id>": [...]}, "daughter": {...} }`
+document and applies the patch for the matching id; this is how a binned board (for example one with
+a component removed) is described.
+
 ### Naming and scoping
 
 Local nets are uniquified at instantiation time by prefixing them with `M{m}D{d}:`. This prefixing

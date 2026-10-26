@@ -105,7 +105,19 @@ template <typename T, size_t AMT> class SmallVec {
 
     SmallVec(const SmallVec &) = delete;
     SmallVec &operator=(const SmallVec &) = delete;
-    SmallVec &operator=(SmallVec &&) = delete;
+    SmallVec &operator=(SmallVec &&other) {
+        if (&other == this) {
+            return *this;
+        }
+
+        if (other.is_local()) {
+            std::swap(this->mSmallBacking, other.mSmallBacking);
+        } else {
+            std::swap(this->mLargeBacking, other.mLargeBacking);
+        }
+        std::swap(this->mSize, other.mSize);
+        return *this;
+    }
 
     ~SmallVec() {
         for (T &elem : *this) {

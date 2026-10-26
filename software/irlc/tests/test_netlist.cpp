@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <cstddef>
 #include <cstdio>
+#include <sstream>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -167,7 +168,9 @@ TEST_CASE("Removed slots are reused once the pool is at capacity", "[netlist]") 
 
     std::vector<NetlistVertexIdx> ids;
     for (int i = 0; i < 20; ++i) {
-        ids.push_back(nl.new_vertex<NetlistVertexKind::NET>(std::string("n"), NoData{}));
+        std::ostringstream name;
+        name << "n" << i;
+        ids.push_back(nl.new_vertex<NetlistVertexKind::NET>(name.str(), NoData{}));
     }
 
     NetlistVertexIdx removed = ids[5];
