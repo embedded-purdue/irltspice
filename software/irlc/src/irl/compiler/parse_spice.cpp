@@ -263,7 +263,7 @@ static inline NetlistVertexIdx create_numeric_node(Netlist &netlist, NetlistVert
     case NetlistVertexKind::C:
         return netlist.new_vertex<C>(std::move(name), std::move(numeric));
     default:
-        ASSERT(false, "Internal error: non-numeric created with create_numeric_node.");
+        IRL_ASSERT(false, "Internal error: non-numeric created with create_numeric_node.");
         return {};
     }
 }
@@ -280,7 +280,7 @@ static inline NetlistVertexIdx create_valuelesss_node(Netlist &netlist, NetlistV
     case NetlistVertexKind::Q_NPN:
         return netlist.new_vertex<Q_NPN>(std::move(name), {});
     default:
-        ASSERT(false, "Internal error: non-valueless created with create_valuelesss_node");
+        IRL_ASSERT(false, "Internal error: non-valueless created with create_valuelesss_node");
         return {};
     }
 }
@@ -300,7 +300,7 @@ static void connect_valueless(Netlist &netlist, NetlistVertexIdx v1, NetlistVert
     switch (kind) {
         EDGE_KINDS
     default:
-        ASSERT(false, "Internal error: non-valueless created with create_valuelesss_node");
+        IRL_ASSERT(false, "Internal error: non-valueless created with create_valuelesss_node");
     }
 
 #undef EDGE_KIND

@@ -72,10 +72,10 @@ VertKindInfo<Kind>::AssociatedData vertDataImpl(nlohmann::json const &j) {
             return json.get<double>();
         } else if (json.is_string()) {
             auto res = NumericParseCommon(j.at("numeric").get_ref<std::string const &>());
-            ASSERT(res.number.has_value(), "Parse number failed.");
+            IRL_ASSERT(res.number.has_value(), "Parse number failed.");
             return *res.number;
         } else {
-            ASSERT(false, "Non-number/string for numeric");
+            IRL_ASSERT(false, "Non-number/string for numeric");
             return std::numeric_limits<double>::signaling_NaN();
         }
     } else if constexpr (std::is_same_v<Data, XbarId>) {
@@ -132,7 +132,7 @@ NetlistEdgeKind portPinKind(NetlistVertexKind portKind, std::string_view kindStr
     name += "_";
     name += kindStr;
     auto kindEnum = EdgeKindFromName(name);
-    ASSERT(kindEnum.has_value(), "No edge kind for this port side");
+    IRL_ASSERT(kindEnum.has_value(), "No edge kind for this port side");
     return *kindEnum;
 }
 
@@ -142,28 +142,28 @@ nlohmann::json parseJsonc(std::string_view text) {
 }
 
 uint32_t jsonToU32(nlohmann::json const &j) {
-    ASSERT(j.is_number(), "Expected a number.");
+    IRL_ASSERT(j.is_number(), "Expected a number.");
     return j.get<uint32_t>();
 }
 
 int32_t jsonToI32(nlohmann::json const &j) {
-    ASSERT(j.is_number(), "Expected a number.");
+    IRL_ASSERT(j.is_number(), "Expected a number.");
     return j.get<int32_t>();
 }
 
 double jsonToDouble(nlohmann::json const &j) {
-    ASSERT(j.is_number(), "Expected a number.");
+    IRL_ASSERT(j.is_number(), "Expected a number.");
     return j.get<double>();
 }
 
 XbarPinId xbarPinIdFromJson(nlohmann::json const &j) {
     auto side = XbarSideFromName(j.at("side").get<std::string>());
-    ASSERT(side.has_value(), "Unknown crossbar pin side");
+    IRL_ASSERT(side.has_value(), "Unknown crossbar pin side");
 
     XbarPinId out{};
     out.side = *side;
     uint32_t index = jsonToU32(j.at("index"));
-    ASSERT(index <= 0xFF, "Crossbar pin index out of range");
+    IRL_ASSERT(index <= 0xFF, "Crossbar pin index out of range");
     out.index = static_cast<uint8_t>(index);
     return out;
 }
@@ -179,7 +179,7 @@ SpstId spstIdFromJson(nlohmann::json const &j) {
 
 NetlistVertexKind componentKindFromJson(nlohmann::json const &j) {
     auto kind = VertKindFromName(j.get<std::string>());
-    ASSERT(kind.has_value(), "Unknown vertex kind");
+    IRL_ASSERT(kind.has_value(), "Unknown vertex kind");
     return *kind;
 }
 
@@ -189,7 +189,7 @@ NetlistVertexKind portKindFromJson(nlohmann::json const &j) {
         name = "PORT_" + name;
     }
     auto kind = VertKindFromName(name);
-    ASSERT(kind.has_value() && VertKindIsPort(*kind), "Unknown port kind");
+    IRL_ASSERT(kind.has_value() && VertKindIsPort(*kind), "Unknown port kind");
     return *kind;
 }
 
@@ -201,7 +201,7 @@ NetlistEdgeKind pinKindFromJson(NetlistVertexKind componentKind, nlohmann::json 
         fullname += pinJson.at("kind").get<std::string>();
     }
     auto kind = EdgeKindFromName(fullname);
-    ASSERT(kind.has_value(), "Unknown pin edge kind");
+    IRL_ASSERT(kind.has_value(), "Unknown pin edge kind");
     return *kind;
 }
 
@@ -210,7 +210,7 @@ NetlistVertexIdx ParseCtx::getOrAddNet(std::string const &rawname) {
     auto name = get_net_canonical_name(kind, rawname);
     auto net_maybe = netlist->get_vertex(name);
     if (net_maybe.has_value()) {
-        ASSERT(VertKindIsNet((*netlist)[*net_maybe].kind()), "Non net already has name.");
+        IRL_ASSERT(VertKindIsNet((*netlist)[*net_maybe].kind()), "Non net already has name.");
         return *net_maybe;
     } else {
         return netlist->new_net(name, get_net_kind(name));
@@ -245,8 +245,8 @@ NetlistVertexIdx ParseCtx::addComponent(std::string_view name, nlohmann::json co
 
     NetlistVertexKind kind = componentKindFromJson(compJson.at("kind"));
 
-    ASSERT(!VertKindIsPort(kind), "Added port in component list.");
-    ASSERT(!VertKindIsNet(kind), "Added net in component list.");
+    IRL_ASSERT(!VertKindIsPort(kind), "Added port in component list.");
+    IRL_ASSERT(!VertKindIsNet(kind), "Added net in component list.");
 
     return addVertInner(name, kind, compJson);
 }
@@ -255,8 +255,8 @@ NetlistVertexIdx ParseCtx::addPort(std::string_view name, nlohmann::json const &
 
     NetlistVertexKind kind = portKindFromJson(portJson.at("kind"));
 
-    ASSERT(VertKindIsPort(kind), "Added component in port list.");
-    ASSERT(!VertKindIsNet(kind), "Added net in port list.");
+    IRL_ASSERT(VertKindIsPort(kind), "Added component in port list.");
+    IRL_ASSERT(!VertKindIsNet(kind), "Added net in port list.");
 
     return addVertInner(name, kind, portJson);
 }
@@ -274,7 +274,7 @@ NetlistVertexIdx ParseCtx::addVertInner(std::string_view name, NetlistVertexKind
     switch (kind) {
         VERT_KINDS
     default:
-        ASSERT(false, "Bad kind. Could not add.");
+        IRL_ASSERT(false, "Bad kind. Could not add.");
     }
 
 #undef VERT_KIND
@@ -291,13 +291,13 @@ BoardTemplate parseBoardTemplate(nlohmann::json const &doc) {
     BoardTemplate out;
 
     auto boardClass_o = BoardClassFromName(doc.at("class").get<std::string>());
-    ASSERT(boardClass_o.has_value(), "Unknown board class");
+    IRL_ASSERT(boardClass_o.has_value(), "Unknown board class");
     out.boardClass = *boardClass_o;
 
     if (out.boardClass == BoardClass::DAUGHTER) {
-        ASSERT(doc.contains("kind") && !doc.at("kind").is_null(), "Missing daughterboard kind");
+        IRL_ASSERT(doc.contains("kind") && !doc.at("kind").is_null(), "Missing daughterboard kind");
         auto kind = DaughterKindFromName(doc.at("kind").get<std::string>());
-        ASSERT(kind.has_value(), "Unknown daughterboard kind");
+        IRL_ASSERT(kind.has_value(), "Unknown daughterboard kind");
         out.daughterKind = *kind;
     }
     if (doc.contains("revision")) {

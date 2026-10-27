@@ -359,10 +359,9 @@ template <bool IsConst> class NetlistVertexT {
 
 #ifndef IRL_NETLIST_NO_CHECK
 #define IRL_GET_CHECKED(FIELD)                                                                     \
-    (detail::ASSERT(mNetlist != nullptr, "null netlist"),                                          \
-     detail::ASSERT(!mIdx.is_null(), "null idx"),                                                  \
-     detail::ASSERT(mIdx.value < fields()->size, "Idx too large"),                                 \
-     detail::ASSERT(fields()->mKind_arr[mIdx.value] != DEAD, "DEAD"),                              \
+    (IRL_ASSERT(mNetlist != nullptr, "null netlist"), IRL_ASSERT(!mIdx.is_null(), "null idx"),     \
+     IRL_ASSERT(mIdx.value < fields()->size, "Idx too large"),                                     \
+     IRL_ASSERT(fields()->mKind_arr[mIdx.value] != DEAD, "DEAD"),                                  \
      fields()->FIELD##_arr[mIdx.value])
 #else
 #define IRL_GET_CHECKED(FIELD) (mFields->FIELD##_arr[mIdx.value])
@@ -378,7 +377,7 @@ template <bool IsConst> class NetlistVertexT {
     inline void rename(std::string_view new_name)
         requires(!IsConst)
     {
-        detail::ASSERT(is_valid(), "Renamed invalid index.");
+        IRL_ASSERT(is_valid(), "Renamed invalid index.");
         mNetlist->rename_vertex(mIdx, new_name);
     }
 

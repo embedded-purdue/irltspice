@@ -23,7 +23,7 @@ std::set<const FieldDescriptor *> handled_fields{};
 
 void insert_field_desc(Descriptor const *desc, const char *name) {
     FieldDescriptor const *fdesc = desc->FindFieldByName(name);
-    ASSERT(fdesc != nullptr, "Null descriptor");
+    IRL_ASSERT(fdesc != nullptr, "Null descriptor");
     handled_fields.insert(fdesc);
 }
 #define IDESC(BUF, NAME) insert_field_desc((BUF).descriptor(), #NAME)
@@ -53,7 +53,7 @@ void initProgrammingCmd(MotherCommandPB *out, irl::ProgrammingCommand const &pcm
                        initProgramXbar(GET_MUTABLE(*GET_MUTABLE(*subout, payload), xbar), pxb);
                    },
                    [&](irl::ProgramLogicalSwitch const &) {
-                       ASSERT(
+                       IRL_ASSERT(
                            false,
                            "Internal error. initProgrammingCmd called with ProgramLogicalSwitch.");
                    },
@@ -126,7 +126,7 @@ void unpackMotherboardTopology(irl::MotherboardTopology *out, MotherboardTopolog
 
     auto const &daughters = GET_FIELD(mtopo, daughterboards);
     auto nMothers = daughters.size();
-    ASSERT(nMothers == std::size(out->daughterboards), "Got bad number of daughterboards.");
+    IRL_ASSERT(nMothers == std::size(out->daughterboards), "Got bad number of daughterboards.");
 
     size_t i = 0;
     for (MotherboardTopology_NullableDaughterboardTopology const &ndtopo : daughters) {
@@ -134,7 +134,7 @@ void unpackMotherboardTopology(irl::MotherboardTopology *out, MotherboardTopolog
             out->daughterboards[i] = {0};
             out->daughterboards[i].kind = DaughterboardKind::NOT_PRESENT;
         } else {
-            ASSERT(HAS_FIELD(ndtopo, daughterboard_info), "Bad daughterboard info.");
+            IRL_ASSERT(HAS_FIELD(ndtopo, daughterboard_info), "Bad daughterboard info.");
             unpackDaughterboardTopology(out->daughterboards + i,
                                         GET_FIELD(ndtopo, daughterboard_info));
         }
@@ -157,6 +157,6 @@ static void unpackDaughterboardTopology(irl::DaughterboardTopology *out,
     } else if (HAS_FIELD(dtopo, test_daughter)) {
         out->kind = DaughterboardKind::TESTING_V1;
     } else {
-        ASSERT(0, "Invalid daughterboard kind detected.");
+        IRL_ASSERT(0, "Invalid daughterboard kind detected.");
     }
 }
