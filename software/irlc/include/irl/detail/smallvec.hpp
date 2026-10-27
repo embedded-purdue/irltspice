@@ -140,7 +140,7 @@ template <typename T, size_t AMT> class SmallVec {
     }
 
     void resize(int64_t newsize) {
-        ASSERT(newsize >= 0, "new size < 0");
+        IRL_ASSERT(newsize >= 0, "new size < 0");
 
         const int64_t current = size();
         if (newsize <= current) {
@@ -179,11 +179,11 @@ template <typename T, size_t AMT> class SmallVec {
     }
 
     T const &operator[](size_t i) const {
-        ASSERT(i < static_cast<size_t>(size()), "Index out of bounds");
+        IRL_ASSERT(i < static_cast<size_t>(size()), "Index out of bounds");
         return *(begin() + i);
     }
     T &operator[](size_t i) {
-        ASSERT(i < static_cast<size_t>(size()), "Index out of bounds");
+        IRL_ASSERT(i < static_cast<size_t>(size()), "Index out of bounds");
         return *(begin() + i);
     }
 

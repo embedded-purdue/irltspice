@@ -61,7 +61,7 @@ static inline std::string_view get_net_canonical_name(NetlistVertexKind kind,
     case NET_V_NEG:
         return IRL_NET_V_NEG_NAMES[0];
     default:
-        detail::ASSERT(false, "Unhandled NET kind");
+        IRL_ASSERT(false, "Unhandled NET kind");
         return "";
     }
 }

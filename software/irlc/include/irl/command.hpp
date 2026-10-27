@@ -122,7 +122,7 @@ class IrlTopology {
     Netlist &netlist() { return mNetlist; };
 
     MotherboardTopology &operator[](size_t i) {
-        detail::ASSERT(i < mSizeMotherboards, "Index out of bounds");
+        IRL_ASSERT(i < mSizeMotherboards, "Index out of bounds");
         return mMotherboards[i];
     }
 };
