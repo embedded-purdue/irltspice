@@ -262,10 +262,8 @@ NetlistVertexIdx Netlist::new_vertex(std::string_view name,
     auto const &string_owned = mVertices.mName_arr[idx.value];
 
     auto [iter, inserted] = mVertexNames.insert(NamemapKey{idx});
-    auto o = std::string("Attempted to create 2 vertices with the same name. Old idx: ");
-    o += iter->i.value;
-    o += "\n";
-    ASSERT(inserted, o.c_str());
+    IRL_ASSERT(inserted, "Attempted to create 2 vertices with the same name. Old idx: {}",
+               iter->i.value);
     // And initialize the enum in place later
     auto loc = mVertices.mValue_arr + idx.value;
     new (&(loc->*VertKindInfo<newKind>::AssociatedField))
@@ -286,7 +284,7 @@ NetlistVertexIdx Netlist::new_net(std::string_view name, NetlistVertexKind kind)
     case NetlistVertexKind::NET_V_NEG:
         return new_vertex<NetlistVertexKind::NET_V_NEG>(name, NoData{});
     default:
-        ASSERT(false, "Unhandled NET kind");
+        IRL_ASSERT(false, "Unhandled NET kind");
         return {};
     }
 }
@@ -304,8 +302,8 @@ NetlistEdgeIdx Netlist::connect(NetlistVertexIdx v1_i, NetlistVertexIdx v2_i,
     MutNetlistVertex v1 = (*this)[v1_i];
     MutNetlistVertex v2 = (*this)[v2_i];
 
-    ASSERT(v1.is_valid(), "Attempted to connect to a null/removed vertex.");
-    ASSERT(v2.is_valid(), "Attempted to connect to a null/removed vertex.");
+    IRL_ASSERT(v1.is_valid(), "Attempted to connect to a null/removed vertex.");
+    IRL_ASSERT(v2.is_valid(), "Attempted to connect to a null/removed vertex.");
 
     const NetlistVertexKind k1 = v1.kind();
     const NetlistVertexKind k2 = v2.kind();
@@ -314,17 +312,17 @@ NetlistEdgeIdx Netlist::connect(NetlistVertexIdx v1_i, NetlistVertexIdx v2_i,
     MutNetlistVertex net;
 
     if (VertKindIsNet(k1)) {
-        ASSERT(!VertKindIsNet(k2), "Attempted to connect two nets.");
+        IRL_ASSERT(!VertKindIsNet(k2), "Attempted to connect two nets.");
         net = v1;
         component = v2;
     } else {
-        ASSERT(VertKindIsNet(k2), "Attempted to connect two components. Use a net.");
+        IRL_ASSERT(VertKindIsNet(k2), "Attempted to connect two components. Use a net.");
         net = v2;
         component = v1;
     }
 
-    ASSERT(component.kind() == EdgeKindInfo<KIND>::AssociatedVertKind,
-           "Attempted to connect an edge to a non-matching component.");
+    IRL_ASSERT(component.kind() == EdgeKindInfo<KIND>::AssociatedVertKind,
+               "Attempted to connect an edge to a non-matching component.");
 
     NetlistEdgeIdx e = alloc_edge_slot();
     init_edge(&mEdges, e, KIND, component.idx(), net.idx(), std::move(len), {});
@@ -378,11 +376,11 @@ std::optional<NetlistVertexIdx> Netlist::get_vertex(std::string_view name) const
 void Netlist::rename_vertex(NetlistVertexIdx v, std::string_view new_name) {
     NamemapKey k{v};
     auto self = mVertexNames.find(k);
-    ASSERT(self != mVertexNames.end(), "Vertex not in name map");
+    IRL_ASSERT(self != mVertexNames.end(), "Vertex not in name map");
     if (self->get(this) == new_name) {
         return;
     }
-    ASSERT(!mVertexNames.contains(new_name), "Renaming to existing name");
+    IRL_ASSERT(!mVertexNames.contains(new_name), "Renaming to existing name");
     mVertexNames.erase(self);
     mVertices.mName_arr[v.value] = SmallStr(new_name.begin(), new_name.end());
     mVertexNames.insert(k);
@@ -435,7 +433,7 @@ void Netlist::remove(NetlistVertexIdx idx) {
     }
 
     NamemapKey k{idx};
-    ASSERT(mVertexNames.contains(k), "Deleted vert not in namemap");
+    IRL_ASSERT(mVertexNames.contains(k), "Deleted vert not in namemap");
     mVertexNames.erase(k);
 
 #define FIELD(T, N) std::destroy_at(mVertices.N + idx.value);
