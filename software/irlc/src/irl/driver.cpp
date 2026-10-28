@@ -14,6 +14,7 @@
 
 namespace irl {
 
+// CRF = Command Result Factory
 class CRF {
   public:
     template <typename T> static CommandResult<T> staleTopo() {

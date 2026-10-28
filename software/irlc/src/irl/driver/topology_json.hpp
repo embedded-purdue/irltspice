@@ -17,29 +17,15 @@
 #include <nlohmann/json_fwd.hpp>
 #include <optional>
 #include <string_view>
-#include <vector>
 
 #include <irl/command.hpp>
 #include <irl/netlist.hpp>
 
+#include "irl/driver/topology_db.hpp"
+
 namespace irl::driver {
 
 // Which of the two board classes a template describes.
-enum class BoardClass : uint8_t { MOTHER, DAUGHTER };
-
-// A board template
-// All edges on netlist are ready-to-use
-// All vertices on netlist are ready unless they are a PORT
-//   - In that case, they are guaranteed to be pointed to by an entry in ports
-struct BoardTemplate {
-    BoardClass boardClass;
-    // Only meaningful for a DAUGHTER template.
-    std::optional<DaughterboardKind> daughterKind;
-    // Hardware revision
-    uint32_t revision = 0;
-    Netlist netlist{};
-    std::vector<NetlistVertexIdx> ports{};
-};
 
 struct ParseCtx {
     Netlist *netlist;
@@ -51,6 +37,9 @@ struct ParseCtx {
     NetlistEdgeIdx addPinAndNet(NetlistVertexIdx component_idx, nlohmann::json const &pinJson);
     NetlistVertexIdx getOrAddNet(std::string const &name);
 };
+// parses a board template out of raw json.
+// Does not populate patchguid
+// It is other software's responsibility to patch the json before this function
 BoardTemplate parseBoardTemplate(nlohmann::json const &doc);
 
 // name -> enum helpers
@@ -61,7 +50,7 @@ std::optional<BoardClass> BoardClassFromName(std::string_view name);
 
 // ---- JSON constructors --------------------------------------------------
 
-// Parse JSON with `//` line comments (and `/* */`) allowed, as used by the
+// Parse JSON with `//` line comments (and `/* */`) allowed, as used by
 // topology templates.
 nlohmann::json parseJsonc(std::string_view text);
 
