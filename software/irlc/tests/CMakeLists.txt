@@ -60,8 +60,10 @@ add_test(NAME irlcompiler-tests COMMAND irlcompiler-tests)
 add_executable(irldriver-tests
     ${CMAKE_CURRENT_LIST_DIR}/test_translate_protobuf.cpp
     ${CMAKE_CURRENT_LIST_DIR}/test_topology_json.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/test_topology_db.cpp
     ${IRLC_DIR}/src/irl/driver/translate_protobuf.cpp
     ${IRLC_DIR}/src/irl/driver/topology_json.cpp
+    ${IRLC_DIR}/src/irl/driver/topology_db.cpp
 )
 
 target_compile_definitions(irldriver-tests PRIVATE TRANSLATE_PROTO_TRACK_FIELDS)

@@ -69,13 +69,9 @@ NetlistEdgeValue edgeDataFromJson(NetlistEdgeKind kind, nlohmann::json const &da
 
 // ---- Patching -----------------------------------------------------------
 
-// Apply the RFC 6902 patch registered for `uniqueId` (keyed by its decimal
-// spelling) in `registry`, if present. Missing registry/id is a no-op.
-void applyJsonPatch(nlohmann::json &doc, uint64_t uniqueId, nlohmann::json const &registry);
-
-// Convenience wrapper for a { "mother": {...}, "daughter": {...} } patch set:
-// selects the registry for `klass`, then calls applyJsonPatch.
-void applyBoardPatch(nlohmann::json &doc, BoardClass klass, uint64_t uniqueId,
-                     nlohmann::json const &patches);
+// Apply an RFC 6902 patch array to a JSON document. Asserts that `patch` is an
+// array. This layer neither knows nor cares which board the patch belongs to;
+// correlating a patch with a board is the registry's job.
+void applyPatch(nlohmann::json &doc, nlohmann::json const &patch);
 
 } // namespace irl::driver

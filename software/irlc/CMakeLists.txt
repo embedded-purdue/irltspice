@@ -149,6 +149,7 @@ add_library(irldriver OBJECT
     ${IRLC_DIR}/src/irl/driver.cpp
     ${IRLC_DIR}/src/irl/driver/translate_protobuf.cpp
     ${IRLC_DIR}/src/irl/driver/topology_json.cpp
+    ${IRLC_DIR}/src/irl/driver/topology_db.cpp
 )
 target_include_directories(irldriver
     PUBLIC ${IRLC_DIR}/include

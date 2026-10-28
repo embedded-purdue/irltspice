@@ -160,30 +160,13 @@ TEST_CASE("parseBoardTemplate reads the builtin mother", "[topology][json]") {
     REQUIRE(inputPin.get_data_if<NetlistEdgeKind::PIN_PORT_GENERIC_PARENT>() != nullptr);
 }
 
-TEST_CASE("applyBoardPatch patches by unique id", "[topology][json]") {
-    auto patches = parseJsonc(R"({
-        "mother": {
-            "1234": [
-                { "op": "remove", "path": "/topology/components/U1" }
-            ]
-        }
-    })");
+TEST_CASE("applyPatch applies an RFC 6902 array", "[topology][json]") {
+    auto patch = parseJsonc(R"([
+        { "op": "remove", "path": "/topology/components/U1" }
+    ])");
 
-    // Matching id: the component is removed.
     auto doc = parseJsonc(mother_rev1);
-    applyBoardPatch(doc, BoardClass::MOTHER, 1234, patches);
+    applyPatch(doc, patch);
     BoardTemplate patched = parseBoardTemplate(doc);
     REQUIRE_FALSE(patched.netlist.get_vertex("U1").has_value());
-
-    // Unrelated id: untouched.
-    auto untouched = parseJsonc(mother_rev1);
-    applyBoardPatch(untouched, BoardClass::MOTHER, 999, patches);
-    BoardTemplate untouchedTmpl = parseBoardTemplate(untouched);
-    REQUIRE(untouchedTmpl.netlist.get_vertex("U1").has_value());
-
-    // Wrong board class: untouched (this id is registered under mother only).
-    auto asDaughter = parseJsonc(mother_rev1);
-    applyBoardPatch(asDaughter, BoardClass::DAUGHTER, 1234, patches);
-    BoardTemplate asDaughterTmpl = parseBoardTemplate(asDaughter);
-    REQUIRE(asDaughterTmpl.netlist.get_vertex("U1").has_value());
 }
