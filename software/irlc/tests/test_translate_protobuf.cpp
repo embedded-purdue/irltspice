@@ -32,7 +32,7 @@ void checkAllFieldsHandled(const Descriptor *desc, std::set<const Descriptor *> 
     for (int i = 0; i < desc->field_count(); ++i) {
         const FieldDescriptor *field = desc->field(i);
         INFO("Unhandled protobuf field: " << field->full_name());
-        CHECK(handled_fields.count(field) == 1);
+        CHECK(irl::handled_fields.count(field) == 1);
 
         if (field->cpp_type() == FieldDescriptor::CPPTYPE_MESSAGE) {
             checkAllFieldsHandled(field->message_type(), visited);
@@ -48,15 +48,15 @@ void checkAllFieldsHandled(const Descriptor *desc) {
 } // namespace
 
 TEST_CASE("Pack every MotherCommand variant", "[translate][proto]") {
-    handled_fields.clear();
+    irl::handled_fields.clear();
 
     // MotherCommand.cmd: topo
     ::MotherCommand topoCmd{};
-    initTopoRequestCmd(&topoCmd);
+    irl::initTopoRequestCmd(&topoCmd);
 
     // MotherCommand.cmd: stop
     ::MotherCommand stopCmd{};
-    initStopProgrammingCmd(&stopCmd);
+    irl::initStopProgrammingCmd(&stopCmd);
 
     // ProgrammingPayload.data: xbar
     irl::XbarId xbarId{};
@@ -94,7 +94,7 @@ TEST_CASE("Pack every MotherCommand variant", "[translate][proto]") {
 }
 
 TEST_CASE("Unpack a full topology", "[translate][proto]") {
-    handled_fields.clear();
+    irl::handled_fields.clear();
 
     ::TopologyResponse resp{};
 
@@ -134,7 +134,7 @@ TEST_CASE("Unpack a full topology", "[translate][proto]") {
     test->set_firm_version_patch(0);
     test->mutable_test_daughter();
 
-    irl::IrlTopology topo = unpackTopology(resp, 42);
+    irl::IrlTopology topo = irl::unpackTopology(resp, 42);
 
     checkAllFieldsHandled(::TopologyResponse::descriptor());
 }
