@@ -79,10 +79,11 @@ derived from the port kind and side (`portPinKind`). nlohmann/json is an impleme
 never appears in a public header.
 
 A region of a template can be modified for one physical board without editing the base template by
-registering an RFC 6902 patch under the board's serial number. `applyBoardPatch` selects the
-`"mother"`/`"daughter"` registry from a `{ "mother": {"<unique_id>": [...]}, "daughter": {...} }`
-document and applies the patch for the matching id; this is how a binned board (for example one with
-a component removed) is described.
+applying an RFC 6902 patch array. The database stores at most one patch array per board GUID;
+correlating a patch with its board is the registry layer's job. Registrations are incremental and
+must be unique: registering a kind that already exists or a second patch for the same GUID asserts.
+`applyPatch` asserts the payload is an array and applies it with `nlohmann::json::patch`. This is
+how a binned board (for example one with a component removed) is described.
 
 ### Naming and scoping
 

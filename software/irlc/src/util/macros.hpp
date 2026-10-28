@@ -19,3 +19,8 @@ template <size_t N> struct StringLiteral {
 };
 
 static inline size_t operator""_z(operator_t n) { return (size_t)n; }
+
+template <class T> inline void hash_combine(std::size_t &seed, const T &v) {
+    std::hash<T> hasher;
+    seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+}

@@ -321,27 +321,9 @@ BoardTemplate parseBoardTemplate(nlohmann::json const &doc) {
     return out;
 }
 
-void applyJsonPatch(nlohmann::json &doc, uint64_t uniqueId, nlohmann::json const &registry) {
-    if (!registry.is_object()) {
-        return;
-    }
-    auto it = registry.find(std::to_string(uniqueId));
-    if (it == registry.end()) {
-        return;
-    }
-    doc = doc.patch(*it);
-}
-
-void applyBoardPatch(nlohmann::json &doc, BoardClass boardClass, uint64_t uniqueId,
-                     nlohmann::json const &patches) {
-    if (!patches.is_object()) {
-        return;
-    }
-    auto it = patches.find(boardClass == BoardClass::MOTHER ? "mother" : "daughter");
-    if (it == patches.end()) {
-        return;
-    }
-    applyJsonPatch(doc, uniqueId, *it);
+void applyPatch(nlohmann::json &doc, nlohmann::json const &patch) {
+    IRL_ASSERT(patch.is_array(), "Topology patch must be an RFC 6902 array");
+    doc = doc.patch(patch);
 }
 
 } // namespace irl::driver
