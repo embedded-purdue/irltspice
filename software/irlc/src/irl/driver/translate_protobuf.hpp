@@ -5,6 +5,8 @@
 
 #include "command.pb.h"
 
+namespace irl {
+
 using google::protobuf::FieldDescriptor;
 
 #ifdef TRANSLATE_PROTO_TRACK_FIELDS
@@ -31,4 +33,6 @@ void initStopProgrammingCmd(MotherCommand *out);
 
 void initTopoRequestCmd(MotherCommand *out);
 
-irl::IrlTopology unpackTopology(TopologyResponsePB const &topo, size_t sequence_no);
+IrlTopology unpackTopology(TopologyResponsePB const &topo, size_t sequence_no);
+
+} // namespace irl

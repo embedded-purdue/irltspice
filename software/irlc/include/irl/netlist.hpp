@@ -58,6 +58,19 @@ struct XbarId {
     MotherId_t mother_id : sizeof(MotherId_t) * 8;
 };
 
+// A datastructure representing a motherboard to daughterboard port.
+// Declares which motherboard and daughterboard it connects
+struct MDPortId {
+    MotherId_t mother_id;
+    DaughterId_t daughter_id;
+};
+// A datastructure representing a motherboard to a motherboard port.
+// Declares which grand-motherboard and child of that grandmother motherboard it connects
+struct MMPortId {
+    MotherId_t grandmother_id;
+    MotherId_t childmother_id;
+};
+
 // Type used as an index to address vertices and edges in a netlist
 using netlistIdx_t = std::uint32_t;
 using sNetlistIdx_t = std::int32_t;
@@ -88,14 +101,8 @@ union NetlistVertexValue {
     XbarId xbarId;
     SpstId spstId;
 
-    struct {
-        MotherId_t mother_id;
-        DaughterId_t daughter_id;
-    } motherToDaughterPort;
-    struct {
-        MotherId_t grandmother_id;
-        MotherId_t childmother_id;
-    } motherToMotherPort;
+    MDPortId motherToDaughterPort;
+    MMPortId motherToMotherPort;
     NoData empty;
     // Holds the next free NetlistVertexIdx when a vertex is on the free list.
     NetlistVertexIdx freeNext;
@@ -286,12 +293,13 @@ using NetlistEdge = NetlistEdgeT<true>;
 using MutNetlistEdge = NetlistEdgeT<false>;
 
 namespace detail {
+using SmallStr = SmallVec<char, 24>;
+using EdgeList = SmallVec<NetlistEdgeIdx, 5>;
+
 // Struct-of-arrays storage for every vertex.
 // size is a high-water mark, i.e. every slot in [0, size) is either live
 // or a tombstone.
 // Important: These must all be trivially relocatable (no internal ptrs)
-using SmallStr = SmallVec<char, 24>;
-using EdgeList = SmallVec<NetlistEdgeIdx, 5>;
 struct NetlistVertexFields {
     NetlistVertexKind *mKind_arr = nullptr;
     SmallStr *mName_arr = nullptr;
@@ -303,8 +311,11 @@ struct NetlistVertexFields {
     sNetlistIdx_t capacity = 0;
     NetlistVertexIdx freeHead{};
 };
+
 NetlistVertexFields *get_v_fields(Netlist *);
 NetlistVertexFields const *get_v_fields(Netlist const *);
+
+class NetlistHelper;
 } // namespace detail
 
 // A handle to a vertex. Holds only a pointer into a Netlist and a NetlistVertexIdx
@@ -471,6 +482,8 @@ template <bool IsConst> class NetlistEdgeT {
 
     inline FieldsT *fields() const { return detail::get_e_fields(mNetlist); }
 
+    inline NetlistEdgeValue const *raw_value() const { return &(fields()->mValue_arr[mIdx.value]); }
+
   public:
     using IterT = SoAIterT<IsConst, NetlistEdgeT>;
 
@@ -557,6 +570,8 @@ template <bool IsConst, template <bool> typename ValT> class SoAIterT {
     SoAIterT() noexcept = default;
     SoAIterT(const This &other) noexcept = default;
     SoAIterT(This &&other) noexcept = default;
+    SoAIterT &operator=(const This &other) noexcept = default;
+    SoAIterT &operator=(This &&other) noexcept = default;
 
     // mut -> const
     SoAIterT(const SoAIterT<false, ValT> &other)
@@ -604,11 +619,12 @@ class Netlist {
         bool operator()(NamemapKey lhs, std::string_view rhs) const;
         bool operator()(std::string_view lhs, NamemapKey rhs) const;
     };
+    using Namemap = std::unordered_set<NamemapKey, NamemapHash, NamemapKeyEql>;
 
     NetlistVertex::Fields mVertices;
     NetlistEdge::Fields mEdges;
 
-    std::unordered_set<NamemapKey, NamemapHash, NamemapKeyEql> mVertexNames;
+    Namemap mVertexNames;
 
     NetlistVertexIdx alloc_vertex_slot();
     NetlistEdgeIdx alloc_edge_slot();
@@ -620,10 +636,7 @@ class Netlist {
 
     void destroy_all() noexcept;
 
-    friend NetlistVertex;
-    friend MutNetlistVertex;
-    friend NetlistEdge;
-    friend MutNetlistEdge;
+    friend class detail::NetlistHelper;
     friend detail::NetlistVertexFields *detail::get_v_fields(Netlist *);
     friend detail::NetlistVertexFields const *detail::get_v_fields(Netlist const *);
     friend detail::NetlistEdgeFields *detail::get_e_fields(Netlist *);
@@ -644,8 +657,8 @@ class Netlist {
     ~Netlist();
 
     // Ensure room for at least `n` vertices / edges. Useful for bulk adds.
-    void reserve_vertices(sNetlistIdx_t n);
-    void reserve_edges(sNetlistIdx_t n);
+    void ensure_vert_capacity(sNetlistIdx_t n);
+    void ensure_edge_capacity(sNetlistIdx_t n);
 
     // Create a new vertex in the netlist
     template <NetlistVertexKind newKind>
@@ -654,9 +667,6 @@ class Netlist {
 
     // Create a new net. Asserts that VertKindIsNet(kind)==true
     NetlistVertexIdx new_net(std::string_view name, NetlistVertexKind kind);
-
-    // Fetch a vertex from this netlist by name
-    std::optional<NetlistVertexIdx> get_vertex(std::string_view name) const;
 
     // Rename a vertex
     void rename_vertex(NetlistVertexIdx v, std::string_view new_name);
@@ -670,6 +680,11 @@ class Netlist {
     // Removes a vertex and all connections to it
     void remove(NetlistVertexIdx idx);
 
+    // Element access:
+
+    // Fetch a vertex from this netlist by name
+    std::optional<NetlistVertexIdx> get_vertex(std::string_view name) const;
+
     inline MutNetlistVertex operator[](NetlistVertexIdx idx) {
         return MutNetlistVertex(*this, idx);
     }
@@ -678,6 +693,53 @@ class Netlist {
     }
     inline MutNetlistEdge operator[](NetlistEdgeIdx idx) { return MutNetlistEdge(*this, idx); }
     inline NetlistEdge operator[](NetlistEdgeIdx idx) const { return NetlistEdge(*this, idx); }
+
+    // Copying/stitching
+
+    // Mapping operations to be performed on copy
+    // Each is passed a ptr to a fresh copy of the field from the copied-from vertex that you can
+    // and should mutate as you see fit. This fresh copy you have now mutated will be subsequently
+    // used to initialize the copied vertex
+    class CopyMappings {
+      public:
+        virtual ~CopyMappings() = default;
+        // Alter the name of a copied-from vertex
+        virtual void map_v_name(std::string *name) const { return; }
+        // Alter the numeric value of a copied-from vertex given its kind
+        virtual void map_v_value(NetlistVertexKind kind, double *val) const { return; }
+        // Alter the xbarId value of a copied-from vertex given its kind
+        virtual void map_v_value(NetlistVertexKind kind, XbarId *val) const { return; }
+        // Alter the spstId value of a copied-from vertex given its kind
+        virtual void map_v_value(NetlistVertexKind kind, SpstId *val) const { return; }
+        // Alter the motherToDaughterPort value of a copied-from vertex given its kind
+        virtual void map_v_value(NetlistVertexKind kind, MDPortId *val) const { return; }
+        // Alter the motherToMotherPort value of a copied-from vertex given its kind
+        virtual void map_v_value(NetlistVertexKind kind, MMPortId *val) const { return; }
+        // Do not overload. Only here to make templated implementation easier.
+        inline void map_v_value(NetlistVertexKind kind, NoData *val) const {}
+    };
+
+    // this_join - a node in this netlist
+    // other - the other netlist
+    // other_join - a node in the other netlist
+    // mappings - operations to performed to nodes/edges in the other netlist as they are being
+    // copied into this netlist Performs a few operations to combine two netlists:
+    //  1. Add to this netlist a copy of each node in "other" except the node identified by
+    //  "other_join"
+    //      - Before adding, each node's name and value will be mapped via the map_v_name and
+    //      map_v_value functions in "mappings"
+    //      - These nodes will have contiguous indices identified by the pair returned by this
+    //      function. All copies will have an index in range: [first, second)
+    //  2. Connect these nodes to each other as they were previously connected, adding new edges to
+    //  this Netlist's edges.
+    //      - Nodes that were previously connected to "other_join" will instead be connected to
+    //      "this_join"
+    // No order is guaranteed for calling mappings, but they will be called for each vertex except
+    // "other_join" If a mapping of a name collides with a name in this netlist it is an error.
+    std::pair<NetlistVertexIdx, NetlistVertexIdx> copy_and_stitch(NetlistVertex this_join,
+                                                                  Netlist const &other,
+                                                                  NetlistVertex other_join,
+                                                                  CopyMappings const *mappings);
 
     // Iteration:
 

@@ -85,9 +85,9 @@ TEST_CASE("parseBoardTemplate reads the builtin mother", "[topology][json]") {
     auto doc = parseJsonc(mother_rev1);
     BoardTemplate tmpl = parseBoardTemplate(doc);
 
-    REQUIRE(tmpl.boardClass == BoardClass::MOTHER);
-    REQUIRE(tmpl.revision == 0);
-    REQUIRE_FALSE(tmpl.daughterKind.has_value());
+    REQUIRE(tmpl.kind.boardClass == BoardClass::MOTHER);
+    REQUIRE(tmpl.kind.hardwareRevision == 0);
+    REQUIRE(tmpl.kind.daughterKind == DaughterboardKind::UNKNOWN);
 
     Netlist &nl = tmpl.netlist;
 

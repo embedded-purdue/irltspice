@@ -1,18 +1,22 @@
 #include "irl/netlist.hpp"
 
+#include <algorithm>
+#include <cassert>
 #include <cstdlib>
 #include <cstring>
 #include <iterator>
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include "fast_float/fast_float.h"
 #include "irl/detail/smallvec.hpp"
 #include "irl/detail/util.hpp"
+#include "util/boost_util.hpp"
 
-using namespace irl;
+namespace irl {
 using detail::ASSERT;
 using detail::EdgeList;
 using detail::SmallStr;
@@ -101,10 +105,17 @@ void Netlist::destroy_all() noexcept {
     mEdges = {};
 }
 
-void Netlist::reserve_vertices(sNetlistIdx_t newcap) {
+#define MINIMUM_VERT_AMT 32
+#define MINIMUM_EDGE_AMT 32
+
+void Netlist::ensure_vert_capacity(sNetlistIdx_t targetcap) {
     auto &verts = mVertices;
-    if (newcap <= verts.capacity) {
+    if (targetcap <= verts.capacity) {
         return;
+    }
+    auto newcap = verts.capacity;
+    while (newcap < targetcap) {
+        newcap = newcap == 0 ? MINIMUM_VERT_AMT : newcap * 2;
     }
 #define FIELD(T, N) verts.N = static_cast<T *>(std::realloc(verts.N, sizeof(T) * newcap));
     VERTEX_FIELDS
@@ -112,10 +123,14 @@ void Netlist::reserve_vertices(sNetlistIdx_t newcap) {
     verts.capacity = newcap;
 }
 
-void Netlist::reserve_edges(sNetlistIdx_t newcap) {
+void Netlist::ensure_edge_capacity(sNetlistIdx_t targetcap) {
     auto &edges = mEdges;
-    if (newcap <= edges.capacity) {
+    if (targetcap <= edges.capacity) {
         return;
+    }
+    auto newcap = edges.capacity;
+    while (newcap < targetcap) {
+        newcap = newcap == 0 ? MINIMUM_EDGE_AMT : newcap * 2;
     }
 #define FIELD(T, N) edges.N = static_cast<T *>(std::realloc(edges.N, sizeof(T) * newcap));
     EDGE_FIELDS
@@ -123,58 +138,81 @@ void Netlist::reserve_edges(sNetlistIdx_t newcap) {
     edges.capacity = newcap;
 }
 
-#define MINIMUM_VERT_AMT 32
-#define MINIMUM_EDGE_AMT 32
-
 // Slot acquisition order: append while there is fresh room, then reuse the free
 // list, then grow. `size` is a high-water mark and never decreases.
 NetlistVertexIdx Netlist::alloc_vertex_slot() {
     if (mVertices.size < mVertices.capacity) {
+        // If we have space use it
         return NetlistVertexIdx{static_cast<netlistIdx_t>(mVertices.size++)};
     } else if (!mVertices.freeHead.is_null()) {
+        // Else try the freelist
         NetlistVertexIdx idx = mVertices.freeHead;
         mVertices.freeHead = NetlistVertexIdx{mVertices.mValue_arr[idx.value].freeNext};
         return idx;
     } else {
-        reserve_vertices(mVertices.capacity == 0 ? MINIMUM_VERT_AMT : mVertices.capacity * 2);
+        // Else grow that hoe
+        ensure_vert_capacity(mVertices.capacity + 1);
         return NetlistVertexIdx{static_cast<netlistIdx_t>(mVertices.size++)};
     }
 }
 
 NetlistEdgeIdx Netlist::alloc_edge_slot() {
     if (mEdges.size < mEdges.capacity) {
+        // If we have space use it
         return NetlistEdgeIdx{static_cast<netlistIdx_t>(mEdges.size++)};
     }
     if (!mEdges.freeHead.is_null()) {
+        // Else try the freelist
         NetlistEdgeIdx idx = mEdges.freeHead;
         mEdges.freeHead = NetlistEdgeIdx{mEdges.mValue_arr[idx.value].freeNext};
         return idx;
+    } else {
+        // Else grow that hoe
+        ensure_edge_capacity(mEdges.capacity + 1);
+        return NetlistEdgeIdx{static_cast<netlistIdx_t>(mEdges.size++)};
     }
-    reserve_edges(mEdges.capacity == 0 ? MINIMUM_EDGE_AMT : mEdges.capacity * 2);
-    return NetlistEdgeIdx{static_cast<netlistIdx_t>(mEdges.size++)};
 }
 
 //=======================
 // Initialization Helpers
 //=======================
 
+namespace detail {
+
+class NetlistHelper {
+  public:
 #define FIELD(T, N) , T &&N##_val
-static inline void init_vert(detail::NetlistVertexFields *verts, NetlistVertexIdx i VERTEX_FIELDS) {
+    static inline void init_vert(Netlist *netlist, NetlistVertexIdx i VERTEX_FIELDS) {
 #undef FIELD
+        NetlistVertexFields *verts = &netlist->mVertices;
 
 #define FIELD(T, N) new (verts->N + i.value) T(std::move(N##_val));
-    VERTEX_FIELDS
+        VERTEX_FIELDS
 #undef FIELD
-}
+
+        // Got to make sure the string view comes from the backing store we own
+        auto const &string_owned = verts->mName_arr[i.value];
+
+        auto [iter, inserted] = netlist->mVertexNames.insert(Netlist::NamemapKey{i});
+        IRL_ASSERT(inserted,
+                   "Attempted to create 2 vertices with the same name. name: {}, old idx: {}",
+                   (*netlist)[iter->i].name(), iter->i.value);
+    }
 
 #define FIELD(T, N) , T &&N##_val
-static inline void init_edge(detail::NetlistEdgeFields *edges, NetlistEdgeIdx i EDGE_FIELDS) {
+    static inline void init_edge(Netlist *netlist, NetlistEdgeIdx i EDGE_FIELDS) {
 #undef FIELD
+        NetlistEdgeFields *edges = &netlist->mEdges;
 
 #define FIELD(T, N) new (edges->N + i.value) T(std::move(N##_val));
-    EDGE_FIELDS
+        EDGE_FIELDS
 #undef FIELD
-}
+    }
+};
+
+} // namespace detail
+
+using Helper = detail::NetlistHelper;
 
 // ==================
 // get_data_if bodies
@@ -248,7 +286,9 @@ EdgeKindInfo<kind>::AssociatedData const *NetlistEdgeT<IsConst>::get_data_if() c
 EDGE_KINDS
 #undef EDGE_KIND
 
-// =================
+//==================
+// Creation
+//==================
 
 template <NetlistVertexKind newKind>
 NetlistVertexIdx Netlist::new_vertex(std::string_view name,
@@ -256,14 +296,8 @@ NetlistVertexIdx Netlist::new_vertex(std::string_view name,
     // Alloc a slot
     NetlistVertexIdx idx = alloc_vertex_slot();
     // Initialize the vertex but leave the union just default initialized
-    init_vert(&mVertices, idx, newKind, SmallStr{name.begin(), name.end()}, {}, EdgeList{});
-
-    // Got to make sure the string view comes from the backing store we own
-    auto const &string_owned = mVertices.mName_arr[idx.value];
-
-    auto [iter, inserted] = mVertexNames.insert(NamemapKey{idx});
-    IRL_ASSERT(inserted, "Attempted to create 2 vertices with the same name. Old idx: {}",
-               iter->i.value);
+    // This checks for name collisions
+    Helper::init_vert(this, idx, newKind, SmallStr{name.begin(), name.end()}, {}, EdgeList{});
     // And initialize the enum in place later
     auto loc = mVertices.mValue_arr + idx.value;
     new (&(loc->*VertKindInfo<newKind>::AssociatedField))
@@ -325,7 +359,7 @@ NetlistEdgeIdx Netlist::connect(NetlistVertexIdx v1_i, NetlistVertexIdx v2_i,
                "Attempted to connect an edge to a non-matching component.");
 
     NetlistEdgeIdx e = alloc_edge_slot();
-    init_edge(&mEdges, e, KIND, component.idx(), net.idx(), std::move(len), {});
+    Helper::init_edge(this, e, KIND, component.idx(), net.idx(), std::move(len), {});
 
     using Data = typename EdgeKindInfo<KIND>::AssociatedData;
     NetlistEdgeValue *val = mEdges.mValue_arr + e.value;
@@ -343,6 +377,112 @@ NetlistEdgeIdx Netlist::connect(NetlistVertexIdx v1_i, NetlistVertexIdx v2_i,
         EdgeKindInfo<NetlistEdgeKind::NAME>::AssociatedData &&, double);
 EDGE_KINDS
 #undef EDGE_KIND
+
+//=====================
+// Copying & Stitching
+//=====================
+
+std::pair<NetlistVertexIdx, NetlistVertexIdx>
+Netlist::copy_and_stitch(NetlistVertex this_join, const Netlist &other, NetlistVertex other_join,
+                         const CopyMappings *mappings) {
+    IRL_ASSERT(this_join.mNetlist == this, "this_join not in this netlist");
+    IRL_ASSERT(other_join.mNetlist == &other, "other_join not in other netlist");
+    IRL_ASSERT(this_join.is_valid(), "this_join invalid");
+    IRL_ASSERT(other_join.is_valid(), "other_join invalid");
+    IRL_ASSERT(mappings != nullptr, "copy_and_stitch requires mappings");
+    IRL_ASSERT(VertKindIsNet(this_join.kind()) == VertKindIsNet(other_join.kind()),
+               "this_join and other_join must both be nets or components");
+
+    // Heuristics but probably right for most stuff
+    // Free list shouldn't be huge lol
+    this->ensure_vert_capacity(this->mVertices.size + other.mVertices.size);
+    this->ensure_edge_capacity(this->mEdges.size + other.mEdges.size);
+
+    auto v_other_to_this_idx = std::make_unique<NetlistVertexIdx[]>(other.mVertices.size);
+    auto e_other_to_this_idx = std::make_unique<NetlistEdgeIdx[]>(other.mEdges.size);
+
+    // Generate old->new vert idx mapping
+    netlistIdx_t v_new_idxs_begin = this->mVertices.size;
+    for (NetlistVertex other_vert : pair_to_iter(other.vertices())) {
+        if (other_vert.idx() == other_join.idx()) {
+            v_other_to_this_idx[other_vert.idx().value] = this_join.idx();
+        } else {
+            v_other_to_this_idx[other_vert.idx().value] = {
+                static_cast<netlistIdx_t>(this->mVertices.size++)};
+        }
+    }
+
+    // Create new edges and set up old->new edge idx mapping
+    for (NetlistEdge other_edge : pair_to_iter(other.edges())) {
+        NetlistEdgeIdx this_edge_idx{static_cast<netlistIdx_t>(this->mEdges.size++)};
+        e_other_to_this_idx[other_edge.idx().value] = this_edge_idx;
+
+        // Remap old component() and net() idxs to new
+        NetlistVertexIdx this_component{
+            v_other_to_this_idx[other_edge.component().idx().value].value};
+        NetlistVertexIdx this_net{v_other_to_this_idx[other_edge.net().idx().value].value};
+
+        Helper::init_edge(this, this_edge_idx, other_edge.kind(), {this_component.value},
+                          {this_net.value}, other_edge.trace_length(),
+                          NetlistEdgeValue{*other_edge.raw_value()});
+
+        // Edges that were attached to other_join now attach to this_join, so they
+        // must show up in this_join's adjacency list too.
+        if (this_component == this_join.idx() || this_net == this_join.idx()) {
+            mVertices.mEdges_arr[this_join.idx().value].push_back(this_edge_idx);
+        }
+    }
+
+    for (NetlistVertex other_vert : pair_to_iter(other.vertices())) {
+        if (other_vert.idx() == other_join.idx()) {
+            continue;
+        }
+
+        netlistIdx_t other_idx = other_vert.idx().value;
+        NetlistVertexIdx this_idx = v_other_to_this_idx[other_idx];
+        assert(!this_idx.is_null());
+
+        std::string_view old_name = other_vert.name();
+        std::span old_edge_list = other_vert.connections();
+        auto kind = other_vert.kind();
+
+        NetlistVertexValue new_val{};
+        std::string new_name{old_name};
+        EdgeList new_edge_list{std::to_address(old_edge_list.begin()),
+                               std::to_address(old_edge_list.end())};
+
+        // Map name
+        mappings->map_v_name(&new_name);
+
+#define VERT_KIND(NAME, UNION_FIELD)                                                               \
+    case NAME:                                                                                     \
+        new_val.UNION_FIELD = *other_vert.get_data_if<NAME>();                                     \
+        mappings->map_v_value(NAME, &(new_val.UNION_FIELD));                                       \
+        break;
+
+        // Map value
+        switch (kind) {
+            using enum NetlistVertexKind;
+            VERT_KINDS
+        }
+
+        // Map edges
+        for (auto &e_idx : new_edge_list) {
+            e_idx = e_other_to_this_idx[e_idx.value];
+        }
+
+        // Init. new_name is still a std::string, so make the owned copy here.
+        SmallStr new_name_small{new_name.data(), new_name.data() + new_name.size()};
+        Helper::init_vert(this, this_idx, NetlistVertexKind{kind}, std::move(new_name_small),
+                          std::move(new_val), std::move(new_edge_list));
+    }
+
+    return {{v_new_idxs_begin}, {static_cast<netlistIdx_t>(this->mVertices.size)}};
+}
+
+//============
+// Namemap BS
+//============
 
 std::string_view Netlist::NamemapKey::get(Netlist const *n) const {
     SmallStr const &str = (n->mVertices.mName_arr)[i.value];
@@ -445,7 +585,6 @@ void Netlist::remove(NetlistVertexIdx idx) {
     mVertices.freeHead = idx;
 }
 
-namespace irl {
 // Helpers
 //
 std::optional<NetlistVertexKind> VertKindFromName(std::string_view name) {

@@ -11,8 +11,7 @@
 #include "irl/netlist.hpp"
 #include "util/macros.hpp"
 
-using namespace irl;
-using detail::ASSERT;
+namespace irl {
 
 #ifdef TRANSLATE_PROTO_TRACK_FIELDS
 #include <set>
@@ -42,22 +41,22 @@ void insert_field_desc(Descriptor const *desc, const char *name) {
 #define HAS_FIELD(VAR, NAME) (IDESC(VAR, NAME), (VAR).has_##NAME())
 
 static void initProgrammingCmdDest(ProgrammingCommandPB *out, auto const &dest);
-static void initProgramXbar(ProgramXbarPB *out, irl::ProgramXbar const &pxb);
-static void initProgramSwitches(ProgramSwitchPB *out, irl::ProgramPhysicalSwitches const &pxb);
+static void initProgramXbar(ProgramXbarPB *out, ProgramXbar const &pxb);
+static void initProgramSwitches(ProgramSwitchPB *out, ProgramPhysicalSwitches const &pxb);
 
-void initProgrammingCmd(MotherCommandPB *out, irl::ProgrammingCommand const &pcmd) {
+void initProgrammingCmd(MotherCommandPB *out, ProgrammingCommand const &pcmd) {
     ProgrammingCommandPB *subout = GET_MUTABLE(*out, prog);
     std::visit(overloads{
-                   [&](irl::ProgramXbar const &pxb) {
+                   [&](ProgramXbar const &pxb) {
                        initProgrammingCmdDest(subout, pxb.xbarId);
                        initProgramXbar(GET_MUTABLE(*GET_MUTABLE(*subout, payload), xbar), pxb);
                    },
-                   [&](irl::ProgramLogicalSwitch const &) {
+                   [&](ProgramLogicalSwitch const &) {
                        IRL_ASSERT(
                            false,
                            "Internal error. initProgrammingCmd called with ProgramLogicalSwitch.");
                    },
-                   [&](irl::ProgramPhysicalSwitches const &psw) {
+                   [&](ProgramPhysicalSwitches const &psw) {
                        initProgrammingCmdDest(subout, psw.spst_ic_id);
                        initProgramSwitches(GET_MUTABLE(*GET_MUTABLE(*subout, payload), swcmd), psw);
                    },
@@ -70,14 +69,14 @@ void initProgrammingCmdDest(ProgrammingCommandPB *out, auto const &dest) {
     SET_FIELD(*out, daughterboard_id, dest.daughter_id);
 }
 
-void initProgramXbar(ProgramXbarPB *out, irl::ProgramXbar const &pxb) {
+void initProgramXbar(ProgramXbarPB *out, ProgramXbar const &pxb) {
     SET_FIELD(*out, column, pxb.col);
     SET_FIELD(*out, row, pxb.row);
     SET_FIELD(*out, crossbar_id, pxb.xbarId.ic_id);
     SET_FIELD(*out, do_connect, pxb.connect);
 }
 
-void initProgramSwitches(ProgramSwitchPB *out, irl::ProgramPhysicalSwitches const &psw) {
+void initProgramSwitches(ProgramSwitchPB *out, ProgramPhysicalSwitches const &psw) {
     SET_FIELD(*out, switch_id, psw.spst_ic_id.ic_id);
     SET_FIELD(*out, active_bitmask, psw.active_bitmask);
     SET_FIELD(*out, onoff_bitmask, psw.onoff_bitmask);
@@ -91,17 +90,16 @@ void initTopoRequestCmd(MotherCommand *out) { (void)GET_MUTABLE(*out, topo); }
 // FUNCTIONS FOR READING FROM PROTOBUFS
 //======================================
 
-static void unpackMotherboardTopology(irl::MotherboardTopology *out,
-                                      MotherboardTopologyPB const &mtopo);
-static void unpackDaughterboardTopology(irl::DaughterboardTopology *out,
+static void unpackMotherboardTopology(MotherboardTopology *out, MotherboardTopologyPB const &mtopo);
+static void unpackDaughterboardTopology(DaughterboardTopology *out,
                                         DaughterboardTopologyPB const &dtopo);
 
-irl::IrlTopology unpackTopology(TopologyResponsePB const &topo, size_t sequence_no) {
+IrlTopology unpackTopology(TopologyResponsePB const &topo, size_t sequence_no) {
     auto const &mothers = GET_FIELD(topo, motherboards);
     auto nMothers = mothers.size();
 
     Netlist netlist{};
-    auto outMtopos = new irl::MotherboardTopology[nMothers];
+    auto outMtopos = new MotherboardTopology[nMothers];
 
     size_t i = 0;
     for (MotherboardTopologyPB const &mtopo : mothers) {
@@ -116,7 +114,7 @@ irl::IrlTopology unpackTopology(TopologyResponsePB const &topo, size_t sequence_
 };
 
 // Unpack just protobuf stuff, leaves topology empty
-void unpackMotherboardTopology(irl::MotherboardTopology *out, MotherboardTopologyPB const &mtopo) {
+void unpackMotherboardTopology(MotherboardTopology *out, MotherboardTopologyPB const &mtopo) {
 
     out->uniqueId = GET_FIELD(mtopo, unique_id);
     out->hardwareRevision = GET_FIELD(mtopo, hardware_revision);
@@ -142,7 +140,7 @@ void unpackMotherboardTopology(irl::MotherboardTopology *out, MotherboardTopolog
     }
 }
 
-static void unpackDaughterboardTopology(irl::DaughterboardTopology *out,
+static void unpackDaughterboardTopology(DaughterboardTopology *out,
                                         DaughterboardTopologyPB const &dtopo) {
 
     out->uniqueId = GET_FIELD(dtopo, unique_id);
@@ -160,3 +158,5 @@ static void unpackDaughterboardTopology(irl::DaughterboardTopology *out,
         IRL_ASSERT(0, "Invalid daughterboard kind detected.");
     }
 }
+
+} // namespace irl

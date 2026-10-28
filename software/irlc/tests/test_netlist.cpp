@@ -164,10 +164,12 @@ TEST_CASE("Removed vertices are tombstoned and skipped by iteration", "[netlist]
 
 TEST_CASE("Removed slots are reused once the pool is at capacity", "[netlist]") {
     Netlist nl;
-    nl.reserve_vertices(20);
+    // ensure_* rounds up to at least MINIMUM_VERT_AMT (32); request exactly that
+    // so the pool is full and the free list is consulted on the next insert.
+    nl.ensure_vert_capacity(32);
 
     std::vector<NetlistVertexIdx> ids;
-    for (int i = 0; i < 20; ++i) {
+    for (int i = 0; i < 32; ++i) {
         std::ostringstream name;
         name << "n" << i;
         ids.push_back(nl.new_vertex<NetlistVertexKind::NET>(name.str(), NoData{}));
@@ -214,8 +216,13 @@ TEST_CASE("Name map tracks create, rename, remove, and move", "[netlist]") {
 }
 
 TEST_CASE("Vertex growth relocates live data and preserves the free list", "[netlist]") {
+    // ensure_* has a floor of MINIMUM_VERT_AMT (32); use multiples of that floor
+    // so the pool is exactly full when we expect the free list to be consulted.
+    constexpr int kBaseCap = 32;
+    constexpr int kGrownCap = 64;
+
     Netlist nl;
-    nl.reserve_vertices(4);
+    nl.ensure_vert_capacity(kBaseCap);
 
     std::vector<std::string> names;
     std::vector<NetlistVertexIdx> ids;
@@ -229,15 +236,15 @@ TEST_CASE("Vertex growth relocates live data and preserves the free list", "[net
     nl.remove(ids[2]);
 
     // Force growth with tombstones present.
-    nl.reserve_vertices(8);
+    nl.ensure_vert_capacity(kGrownCap);
 
     REQUIRE(nl[ids[0]].name() == names[0]);
     REQUIRE(nl[ids[3]].name() == names[3]);
     REQUIRE_FALSE(nl[ids[1]].is_valid());
     REQUIRE_FALSE(nl[ids[2]].is_valid());
 
-    // Fill the new capacity. The next two allocations must reuse the tombstones.
-    for (int i = 0; i < 4; ++i) {
+    // Fill the grown capacity. The next two allocations must reuse the tombstones.
+    for (int i = 4; i < kGrownCap; ++i) {
         nl.new_vertex<NetlistVertexKind::NET>(std::string("filler") + std::to_string(i), NoData{});
     }
 
@@ -248,8 +255,12 @@ TEST_CASE("Vertex growth relocates live data and preserves the free list", "[net
 }
 
 TEST_CASE("Edge growth relocates live data and preserves the free list", "[netlist]") {
+    // See the vertex growth test for why capacities are multiples of the floor.
+    constexpr int kBaseCap = 32;
+    constexpr int kGrownCap = 64;
+
     Netlist nl;
-    nl.reserve_edges(2);
+    nl.ensure_edge_capacity(kBaseCap);
 
     auto a = nl.new_vertex<NetlistVertexKind::NET>(std::string("a"), NoData{});
     auto b = nl.new_vertex<NetlistVertexKind::NET>(std::string("b"), NoData{});
@@ -262,17 +273,76 @@ TEST_CASE("Edge growth relocates live data and preserves the free list", "[netli
     REQUIRE_FALSE(nl[tombstone].is_valid());
 
     // Force growth with a tombstoned edge present.
-    nl.reserve_edges(4);
+    nl.ensure_edge_capacity(kGrownCap);
 
     REQUIRE(nl[live].kind() == NetlistEdgeKind::PIN_R);
     REQUIRE(nl[live].net().name() == "a");
     REQUIRE(nl[live].trace_length() == 1.25);
 
-    nl.connect<NetlistEdgeKind::PIN_R>(r, c, NoData{}, 3.5);
+    // Fill the grown capacity. The next edge must reuse the tombstone.
+    for (int i = 2; i < kGrownCap; ++i) {
+        nl.connect<NetlistEdgeKind::PIN_R>(r, c, NoData{}, 3.5);
+    }
     auto r2 = nl.new_vertex<NetlistVertexKind::R>(std::string("R2"), 2.0);
-    nl.connect<NetlistEdgeKind::PIN_R>(r2, a, NoData{}, 4.5);
-
-    auto reused = nl.connect<NetlistEdgeKind::PIN_R>(r2, c, NoData{}, 5.5);
+    auto reused = nl.connect<NetlistEdgeKind::PIN_R>(r2, a, NoData{}, 5.5);
     REQUIRE(reused == tombstone);
     REQUIRE(nl[reused].trace_length() == 5.5);
+}
+
+TEST_CASE("copy_and_stitch copies, maps, and transfers adjacency", "[netlist]") {
+    Netlist dst;
+    auto this_join = dst.new_vertex<NetlistVertexKind::NET>(std::string("t_join"), NoData{});
+    auto r0 = dst.new_vertex<NetlistVertexKind::R>(std::string("R0"), 5.0);
+    auto preexisting = dst.connect<NetlistEdgeKind::PIN_R>(r0, this_join, NoData{}, 0.5);
+
+    Netlist src;
+    auto other_join = src.new_vertex<NetlistVertexKind::NET>(std::string("o_join"), NoData{});
+    auto o_n1 = src.new_vertex<NetlistVertexKind::NET>(std::string("o_n1"), NoData{});
+    auto o_r = src.new_vertex<NetlistVertexKind::R>(std::string("o_R"), 10.0);
+    src.connect<NetlistEdgeKind::PIN_R>(o_r, other_join, NoData{}, 1.0);
+    src.connect<NetlistEdgeKind::PIN_R>(o_r, o_n1, NoData{}, 2.0);
+
+    struct Mapping : Netlist::CopyMappings {
+        void map_v_name(std::string *name) const override { *name = "copied_" + *name; }
+        void map_v_value(NetlistVertexKind, double *val) const override { *val *= 100.0; }
+    } mappings;
+
+    auto [first, second] = dst.copy_and_stitch(dst[this_join], src, src[other_join], &mappings);
+
+    // o_join is consumed by the stitch, so only o_n1 and o_R are copied.
+    REQUIRE(second.value - first.value == 2);
+
+    auto o_n1_copy = dst.get_vertex("copied_o_n1");
+    auto o_r_copy = dst.get_vertex("copied_o_R");
+    REQUIRE(o_n1_copy.has_value());
+    REQUIRE(o_r_copy.has_value());
+    REQUIRE_FALSE(dst.get_vertex("copied_o_join").has_value());
+    REQUIRE(first.value <= o_n1_copy->value);
+    REQUIRE(o_n1_copy->value < second.value);
+    REQUIRE(first.value <= o_r_copy->value);
+    REQUIRE(o_r_copy->value < second.value);
+
+    // map_v_value ran on the copied resistor.
+    REQUIRE(*dst[*o_r_copy].get_data_if<NetlistVertexKind::R>() == 1000.0);
+
+    // Adjacency: t_join keeps its own edge and gains the stitched one; the
+    // copied resistor keeps both of its edges; the copied net keeps one.
+    REQUIRE(dst[this_join].connections().size() == 2);
+    REQUIRE(dst[*o_r_copy].connections().size() == 2);
+    REQUIRE(dst[*o_n1_copy].connections().size() == 1);
+
+    // The stitched edge must be reachable from both ends.
+    std::optional<NetlistEdgeIdx> stitched;
+    for (NetlistEdgeIdx e : dst[this_join].connections()) {
+        if (dst[e].component().idx() == *o_r_copy) {
+            stitched = e;
+        }
+    }
+    REQUIRE(stitched.has_value());
+    REQUIRE(dst[*stitched].net().idx() == this_join);
+
+    // Removing t_join must clean up the stitched edge, not just the original.
+    dst.remove(this_join);
+    REQUIRE_FALSE(dst[*stitched].is_valid());
+    REQUIRE_FALSE(dst[preexisting].is_valid());
 }

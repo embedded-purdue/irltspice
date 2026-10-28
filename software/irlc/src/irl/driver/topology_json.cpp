@@ -292,16 +292,16 @@ BoardTemplate parseBoardTemplate(nlohmann::json const &doc) {
 
     auto boardClass_o = BoardClassFromName(doc.at("class").get<std::string>());
     IRL_ASSERT(boardClass_o.has_value(), "Unknown board class");
-    out.boardClass = *boardClass_o;
+    out.kind.boardClass = *boardClass_o;
 
-    if (out.boardClass == BoardClass::DAUGHTER) {
+    if (out.kind.boardClass == BoardClass::DAUGHTER) {
         IRL_ASSERT(doc.contains("kind") && !doc.at("kind").is_null(), "Missing daughterboard kind");
         auto kind = DaughterKindFromName(doc.at("kind").get<std::string>());
         IRL_ASSERT(kind.has_value(), "Unknown daughterboard kind");
-        out.daughterKind = *kind;
+        out.kind.daughterKind = *kind;
     }
     if (doc.contains("revision")) {
-        out.revision = jsonToU32(doc.at("revision"));
+        out.kind.hardwareRevision = jsonToU32(doc.at("revision"));
     }
 
     auto const &topo = doc.at("topology");
