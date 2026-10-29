@@ -2483,7 +2483,7 @@
 		)
 	)
 	(sheet
-		(at 231.14 46.99)
+		(at 82.55 76.2)
 		(size 31.75 88.9)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -2499,7 +2499,7 @@
 		)
 		(uuid "d704e8c5-d3f5-4bae-9225-74bda90e3f22")
 		(property "Sheetname" "Microcontroller & Controls"
-			(at 231.14 46.2784 0)
+			(at 82.55 75.4884 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2508,7 +2508,7 @@
 			)
 		)
 		(property "Sheetfile" "stm_controls.kicad_sch"
-			(at 231.14 136.4746 0)
+			(at 82.55 165.6846 0)
 			(effects
 				(font
 					(size 1.27 1.27)
