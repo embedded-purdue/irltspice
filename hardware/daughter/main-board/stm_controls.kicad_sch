@@ -5358,7 +5358,7 @@
 		(uuid "0c72a36f-03a4-4865-8f36-8af66f3bc4d4")
 	)
 	(no_connect
-		(at 176.53 186.69)
+		(at 176.53 189.23)
 		(uuid "13e368a0-0e11-4db3-a841-509438e3b0a1")
 	)
 	(no_connect
@@ -5386,8 +5386,12 @@
 		(uuid "35b2279a-7cab-4482-8b4c-33669f66bbc7")
 	)
 	(no_connect
-		(at 146.05 212.09)
+		(at 146.05 214.63)
 		(uuid "378c7e3a-c000-4d73-b984-a47f09a502f4")
+	)
+	(no_connect
+		(at 62.23 80.01)
+		(uuid "4add0b61-0e42-423c-8472-731205f6d945")
 	)
 	(no_connect
 		(at 133.35 77.47)
@@ -5418,10 +5422,6 @@
 		(uuid "670b525e-f133-4c40-b3ca-1b8a893afc0f")
 	)
 	(no_connect
-		(at 62.23 80.01)
-		(uuid "79c8a7b4-3a63-4ee4-820f-983dbd1297c5")
-	)
-	(no_connect
 		(at 328.93 134.62)
 		(uuid "7f976285-7500-435c-b646-ff875bc5f4cd")
 	)
@@ -5446,7 +5446,7 @@
 		(uuid "99268b46-574a-4f14-ae85-c1938de80e0c")
 	)
 	(no_connect
-		(at 111.76 212.09)
+		(at 111.76 214.63)
 		(uuid "a1a6b030-488e-4718-a3e1-1dbcbb705890")
 	)
 	(no_connect
@@ -5466,7 +5466,7 @@
 		(uuid "b69a5267-92f9-4569-9706-755a0bbf37ae")
 	)
 	(no_connect
-		(at 146.05 186.69)
+		(at 146.05 189.23)
 		(uuid "df8d13a4-df96-407d-8403-0da178e589b0")
 	)
 	(no_connect
@@ -5478,7 +5478,7 @@
 		(uuid "f19a32ca-18ea-4311-8062-2dba37dd31d2")
 	)
 	(no_connect
-		(at 113.03 186.69)
+		(at 113.03 189.23)
 		(uuid "f871fcc5-9aa7-4a82-aa08-32610a22e7a4")
 	)
 	(no_connect
@@ -5827,7 +5827,7 @@
 	)
 	(wire
 		(pts
-			(xy 111.76 204.47) (xy 113.03 204.47)
+			(xy 111.76 207.01) (xy 113.03 207.01)
 		)
 		(stroke
 			(width 0)
@@ -5877,7 +5877,7 @@
 	)
 	(wire
 		(pts
-			(xy 144.78 179.07) (xy 146.05 179.07)
+			(xy 144.78 181.61) (xy 146.05 181.61)
 		)
 		(stroke
 			(width 0)
@@ -5937,7 +5937,7 @@
 	)
 	(wire
 		(pts
-			(xy 111.76 212.09) (xy 113.03 212.09)
+			(xy 111.76 214.63) (xy 113.03 214.63)
 		)
 		(stroke
 			(width 0)
@@ -5967,7 +5967,7 @@
 	)
 	(wire
 		(pts
-			(xy 144.78 209.55) (xy 146.05 209.55)
+			(xy 144.78 212.09) (xy 146.05 212.09)
 		)
 		(stroke
 			(width 0)
@@ -6087,7 +6087,7 @@
 	)
 	(wire
 		(pts
-			(xy 111.76 207.01) (xy 113.03 207.01)
+			(xy 111.76 209.55) (xy 113.03 209.55)
 		)
 		(stroke
 			(width 0)
@@ -6147,7 +6147,7 @@
 	)
 	(wire
 		(pts
-			(xy 111.76 184.15) (xy 113.03 184.15)
+			(xy 111.76 186.69) (xy 113.03 186.69)
 		)
 		(stroke
 			(width 0)
@@ -6487,7 +6487,7 @@
 	)
 	(wire
 		(pts
-			(xy 176.53 186.69) (xy 177.8 186.69)
+			(xy 176.53 189.23) (xy 177.8 189.23)
 		)
 		(stroke
 			(width 0)
@@ -6727,7 +6727,7 @@
 	)
 	(wire
 		(pts
-			(xy 111.76 181.61) (xy 113.03 181.61)
+			(xy 111.76 184.15) (xy 113.03 184.15)
 		)
 		(stroke
 			(width 0)
@@ -6737,7 +6737,7 @@
 	)
 	(wire
 		(pts
-			(xy 111.76 179.07) (xy 113.03 179.07)
+			(xy 111.76 181.61) (xy 113.03 181.61)
 		)
 		(stroke
 			(width 0)
@@ -6967,7 +6967,7 @@
 	)
 	(wire
 		(pts
-			(xy 176.53 179.07) (xy 177.8 179.07)
+			(xy 176.53 181.61) (xy 177.8 181.61)
 		)
 		(stroke
 			(width 0)
@@ -7017,7 +7017,7 @@
 	)
 	(wire
 		(pts
-			(xy 144.78 207.01) (xy 146.05 207.01)
+			(xy 144.78 209.55) (xy 146.05 209.55)
 		)
 		(stroke
 			(width 0)
@@ -7307,7 +7307,7 @@
 	)
 	(wire
 		(pts
-			(xy 144.78 204.47) (xy 146.05 204.47)
+			(xy 144.78 207.01) (xy 146.05 207.01)
 		)
 		(stroke
 			(width 0)
@@ -7477,7 +7477,7 @@
 	)
 	(wire
 		(pts
-			(xy 176.53 181.61) (xy 177.8 181.61)
+			(xy 176.53 184.15) (xy 177.8 184.15)
 		)
 		(stroke
 			(width 0)
@@ -7517,7 +7517,7 @@
 	)
 	(wire
 		(pts
-			(xy 144.78 181.61) (xy 146.05 181.61)
+			(xy 144.78 184.15) (xy 146.05 184.15)
 		)
 		(stroke
 			(width 0)
@@ -7757,7 +7757,7 @@
 	)
 	(wire
 		(pts
-			(xy 176.53 184.15) (xy 177.8 184.15)
+			(xy 176.53 186.69) (xy 177.8 186.69)
 		)
 		(stroke
 			(width 0)
@@ -7777,7 +7777,7 @@
 	)
 	(wire
 		(pts
-			(xy 144.78 184.15) (xy 146.05 184.15)
+			(xy 144.78 186.69) (xy 146.05 186.69)
 		)
 		(stroke
 			(width 0)
@@ -7915,16 +7915,6 @@
 		)
 		(uuid "0a01d65f-ba60-4e10-a614-3b811cc4fb37")
 	)
-	(label "CM_DPOT_CS0"
-		(at 66.04 196.85 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left)
-		)
-		(uuid "0faa72b4-2c11-4271-adcf-70b4a388bd80")
-	)
 	(label "BRUZ_NRST"
 		(at 330.2 162.56 0)
 		(effects
@@ -7995,6 +7985,16 @@
 		)
 		(uuid "208783eb-07bb-46e4-bcf7-090503627787")
 	)
+	(label "CM_DPOT_CS0"
+		(at 66.04 196.85 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "20c44419-6af4-4d4b-b638-21071d1b40d9")
+	)
 	(label "MT_STB"
 		(at 311.15 66.04 180)
 		(effects
@@ -8016,7 +8016,7 @@
 		(uuid "23860878-4dd4-484e-8ee0-06924ba3a6ad")
 	)
 	(label "SPI2_MOSI"
-		(at 144.78 179.07 180)
+		(at 144.78 181.61 180)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -8085,7 +8085,7 @@
 		)
 		(uuid "32945082-40ad-4a04-8531-8fe9cb865968")
 	)
-	(label "CM_EN"
+	(label "CM_EN1"
 		(at 60.96 77.47 180)
 		(effects
 			(font
@@ -8106,7 +8106,7 @@
 		(uuid "37a67d72-6802-4660-8b10-5491f9fa18ea")
 	)
 	(label "SPI2_MOSI"
-		(at 111.76 179.07 180)
+		(at 111.76 181.61 180)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -8136,7 +8136,7 @@
 		(uuid "3b3a2f17-e779-40ab-967f-aa6d1474378e")
 	)
 	(label "SPI2_MOSI"
-		(at 144.78 204.47 180)
+		(at 144.78 207.01 180)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -8146,7 +8146,7 @@
 		(uuid "3b47c8c4-970f-46ce-a70b-01bc6cf899c5")
 	)
 	(label "CM_SPST_CS1"
-		(at 111.76 207.01 180)
+		(at 111.76 209.55 180)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -8186,7 +8186,7 @@
 		(uuid "43651d59-7760-4315-ba4b-640ac82b6aab")
 	)
 	(label "SPI2_MOSI"
-		(at 111.76 204.47 180)
+		(at 111.76 207.01 180)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -8365,16 +8365,6 @@
 		)
 		(uuid "695cb181-58d3-4b3a-b1bb-2e08ed72db6c")
 	)
-	(label "CM_DPOT_CS1"
-		(at 66.04 199.39 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left)
-		)
-		(uuid "6b945935-d8db-49f0-9379-0ed58b8cd220")
-	)
 	(label "MT_AX1"
 		(at 60.96 125.73 180)
 		(effects
@@ -8476,7 +8466,7 @@
 		(uuid "76ebe480-409b-4520-b950-16d4122df4f7")
 	)
 	(label "SPI2_MOSI"
-		(at 176.53 179.07 180)
+		(at 176.53 181.61 180)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -8516,7 +8506,7 @@
 		(uuid "8710bce8-a3fb-475a-99d2-f5b03f1a6978")
 	)
 	(label "CM_SPST_CS2"
-		(at 144.78 181.61 180)
+		(at 144.78 184.15 180)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -8564,6 +8554,16 @@
 			(justify right)
 		)
 		(uuid "962ebb2f-323d-49e4-a1fc-570c4e17a372")
+	)
+	(label "CM_DPOT_CS2"
+		(at 66.04 201.93 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "97ecd330-a953-47b9-8a70-b244c73549fc")
 	)
 	(label "LED_STM_3"
 		(at 71.12 227.33 0)
@@ -8656,7 +8656,7 @@
 		(uuid "a6fc0b1c-908f-43b8-8cf2-f600a5ac1426")
 	)
 	(label "SPI2_SCK"
-		(at 144.78 209.55 180)
+		(at 144.78 212.09 180)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -8716,7 +8716,7 @@
 		(uuid "aede0a76-c8f2-489e-95eb-215aae2d946a")
 	)
 	(label "SPI2_SCK"
-		(at 144.78 184.15 180)
+		(at 144.78 186.69 180)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -8746,7 +8746,7 @@
 		(uuid "b09a5e65-d238-45c0-9535-a72bfa6fdf3a")
 	)
 	(label "CM_SPST_CS0"
-		(at 111.76 181.61 180)
+		(at 111.76 184.15 180)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -8766,7 +8766,7 @@
 		(uuid "b38c3093-5315-4142-8f68-bca953963787")
 	)
 	(label "SPI2_SCK"
-		(at 176.53 184.15 180)
+		(at 176.53 186.69 180)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -8804,16 +8804,6 @@
 			(justify right bottom)
 		)
 		(uuid "b7ae193c-1c91-4c55-a324-43323d2ca8d5")
-	)
-	(label "CM_DPOT_CS2"
-		(at 66.04 201.93 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left)
-		)
-		(uuid "b80df68d-fc0a-4624-b66a-056deb42e683")
 	)
 	(label "BRUZ_NRST"
 		(at 391.16 182.88 0)
@@ -8876,7 +8866,7 @@
 		(uuid "bf976543-e952-4a63-bcd2-b39ea15b0d0e")
 	)
 	(label "CM_SPST_CS3"
-		(at 144.78 207.01 180)
+		(at 144.78 209.55 180)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -8996,7 +8986,7 @@
 		(uuid "d2b3c5bb-0dbd-40f1-9d1d-a52617ff5b36")
 	)
 	(label "CM_SPST_CS4"
-		(at 176.53 181.61 180)
+		(at 176.53 184.15 180)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -9085,7 +9075,7 @@
 		)
 		(uuid "e04bdcee-4784-4ca6-8e56-a9c703387fab")
 	)
-	(label "CM_EN"
+	(label "CM_EN1"
 		(at 45.72 201.93 180)
 		(effects
 			(font
@@ -9165,6 +9155,16 @@
 		)
 		(uuid "ec518221-a25f-42d4-8b0f-d2642cfea056")
 	)
+	(label "CM_DPOT_CS1"
+		(at 66.04 199.39 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "ee68f17c-2ec5-4f6b-8ade-68faf62243b9")
+	)
 	(label "MT_AX3"
 		(at 368.3 26.67 180)
 		(effects
@@ -9186,7 +9186,7 @@
 		(uuid "f0e62463-ec6b-4d11-9439-f2b4ee470a5b")
 	)
 	(label "SPI2_SCK"
-		(at 111.76 184.15 180)
+		(at 111.76 186.69 180)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -10878,7 +10878,7 @@
 	)
 	(symbol
 		(lib_id "SeniorDesign:ADG1414BRU_1")
-		(at 116.84 227.33 0)
+		(at 116.84 229.87 0)
 		(unit 3)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -10886,7 +10886,7 @@
 		(dnp no)
 		(uuid "2d82c47a-7762-4423-9b14-2aa544ac2194")
 		(property "Reference" "U7"
-			(at 122.174 223.266 0)
+			(at 122.174 225.806 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -10895,7 +10895,7 @@
 			)
 		)
 		(property "Value" "ADG1414BRUZ"
-			(at 118.11 226.06 0)
+			(at 118.11 228.6 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -10904,7 +10904,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 116.84 227.33 0)
+			(at 116.84 229.87 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -10913,7 +10913,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 116.84 227.33 0)
+			(at 116.84 229.87 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -10922,7 +10922,7 @@
 			)
 		)
 		(property "Description" "ADG1414BRUZ analog SPST switch"
-			(at 116.84 227.33 0)
+			(at 116.84 229.87 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -14172,7 +14172,7 @@
 	)
 	(symbol
 		(lib_id "SeniorDesign:ADG1414BRU_1")
-		(at 176.53 176.53 0)
+		(at 176.53 179.07 0)
 		(unit 2)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -14180,7 +14180,7 @@
 		(dnp no)
 		(uuid "95296817-e42e-4058-a3e8-ce970c04d113")
 		(property "Reference" "U7"
-			(at 182.88 172.974 0)
+			(at 182.88 175.514 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -14189,7 +14189,7 @@
 			)
 		)
 		(property "Value" "ADG1414BRUZ"
-			(at 179.07 175.26 0)
+			(at 179.07 177.8 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -14198,7 +14198,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 176.53 176.53 0)
+			(at 176.53 179.07 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -14207,7 +14207,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 176.53 176.53 0)
+			(at 176.53 179.07 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -14216,7 +14216,7 @@
 			)
 		)
 		(property "Description" "ADG1414BRUZ analog SPST switch"
-			(at 176.53 176.53 0)
+			(at 176.53 179.07 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -14468,7 +14468,7 @@
 	)
 	(symbol
 		(lib_id "SeniorDesign:ADG1414BRU_1")
-		(at 111.76 176.53 0)
+		(at 111.76 179.07 0)
 		(unit 2)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -14476,7 +14476,7 @@
 		(dnp no)
 		(uuid "990fee26-3275-4bb1-ab2e-c1d72c300d20")
 		(property "Reference" "U5"
-			(at 118.364 172.466 0)
+			(at 118.364 175.006 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -14485,7 +14485,7 @@
 			)
 		)
 		(property "Value" "ADG1414BRUZ"
-			(at 114.046 175.006 0)
+			(at 114.046 177.546 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -14494,7 +14494,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 111.76 176.53 0)
+			(at 111.76 179.07 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -14503,7 +14503,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 111.76 176.53 0)
+			(at 111.76 179.07 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -14512,7 +14512,7 @@
 			)
 		)
 		(property "Description" "ADG1414BRUZ analog SPST switch"
-			(at 111.76 176.53 0)
+			(at 111.76 179.07 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -14676,7 +14676,7 @@
 	)
 	(symbol
 		(lib_id "SeniorDesign:ADG1414BRU_1")
-		(at 116.84 248.92 0)
+		(at 116.84 251.46 0)
 		(unit 3)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -14684,14 +14684,6 @@
 		(dnp no)
 		(uuid "99b88eed-4ec1-464a-aa38-54afc06de5c7")
 		(property "Reference" "U12"
-			(at 124.46 244.856 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Value" "ADG1414BRUZ"
 			(at 124.46 247.396 0)
 			(effects
 				(font
@@ -14699,8 +14691,16 @@
 				)
 			)
 		)
+		(property "Value" "ADG1414BRUZ"
+			(at 124.46 249.936 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(property "Footprint" ""
-			(at 116.84 248.92 0)
+			(at 116.84 251.46 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -14709,7 +14709,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 116.84 248.92 0)
+			(at 116.84 251.46 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -14718,7 +14718,7 @@
 			)
 		)
 		(property "Description" "ADG1414BRUZ analog SPST switch"
-			(at 116.84 248.92 0)
+			(at 116.84 251.46 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -16022,7 +16022,7 @@
 	)
 	(symbol
 		(lib_id "SeniorDesign:ADG1414BRU_1")
-		(at 139.7 248.92 0)
+		(at 139.7 251.46 0)
 		(unit 3)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -16030,7 +16030,7 @@
 		(dnp no)
 		(uuid "af880026-e797-4e28-8998-506e6e995f1c")
 		(property "Reference" "U6"
-			(at 145.542 244.602 0)
+			(at 145.542 247.142 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -16039,7 +16039,7 @@
 			)
 		)
 		(property "Value" "ADG1414BRUZ"
-			(at 141.224 247.142 0)
+			(at 141.224 249.682 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -16048,7 +16048,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 139.7 248.92 0)
+			(at 139.7 251.46 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -16057,7 +16057,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 139.7 248.92 0)
+			(at 139.7 251.46 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -16066,7 +16066,7 @@
 			)
 		)
 		(property "Description" "ADG1414BRUZ analog SPST switch"
-			(at 139.7 248.92 0)
+			(at 139.7 251.46 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -16157,7 +16157,7 @@
 	)
 	(symbol
 		(lib_id "SeniorDesign:ADG1414BRU_1")
-		(at 111.76 201.93 0)
+		(at 111.76 204.47 0)
 		(unit 2)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -16165,7 +16165,7 @@
 		(dnp no)
 		(uuid "b714a0a8-bb8f-4a81-95c8-7a106ad04089")
 		(property "Reference" "U6"
-			(at 118.11 197.612 0)
+			(at 118.11 200.152 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -16174,7 +16174,7 @@
 			)
 		)
 		(property "Value" "ADG1414BRUZ"
-			(at 114.3 200.152 0)
+			(at 114.3 202.692 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -16183,7 +16183,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 111.76 201.93 0)
+			(at 111.76 204.47 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -16192,7 +16192,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 111.76 201.93 0)
+			(at 111.76 204.47 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -16201,7 +16201,7 @@
 			)
 		)
 		(property "Description" "ADG1414BRUZ analog SPST switch"
-			(at 111.76 201.93 0)
+			(at 111.76 204.47 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -16358,7 +16358,7 @@
 	)
 	(symbol
 		(lib_id "SeniorDesign:ADG1414BRU_1")
-		(at 139.7 227.33 0)
+		(at 139.7 229.87 0)
 		(unit 3)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -16366,7 +16366,7 @@
 		(dnp no)
 		(uuid "b849ba07-531c-44cf-bb89-7b9647af8b99")
 		(property "Reference" "U10"
-			(at 145.034 223.266 0)
+			(at 145.034 225.806 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -16375,7 +16375,7 @@
 			)
 		)
 		(property "Value" "ADG1414BRUZ"
-			(at 140.97 226.06 0)
+			(at 140.97 228.6 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -16384,7 +16384,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 139.7 227.33 0)
+			(at 139.7 229.87 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -16393,7 +16393,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 139.7 227.33 0)
+			(at 139.7 229.87 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -16402,7 +16402,7 @@
 			)
 		)
 		(property "Description" "ADG1414BRUZ analog SPST switch"
-			(at 139.7 227.33 0)
+			(at 139.7 229.87 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -17189,7 +17189,7 @@
 	)
 	(symbol
 		(lib_id "SeniorDesign:ADG1414BRU_1")
-		(at 144.78 201.93 0)
+		(at 144.78 204.47 0)
 		(unit 2)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -17197,14 +17197,6 @@
 		(dnp no)
 		(uuid "c8548afa-8d17-4764-b3b9-bb7ffed6fc85")
 		(property "Reference" "U12"
-			(at 152.4 197.866 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Value" "ADG1414BRUZ"
 			(at 152.4 200.406 0)
 			(effects
 				(font
@@ -17212,8 +17204,16 @@
 				)
 			)
 		)
+		(property "Value" "ADG1414BRUZ"
+			(at 152.4 202.946 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(property "Footprint" ""
-			(at 144.78 201.93 0)
+			(at 144.78 204.47 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -17222,7 +17222,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 144.78 201.93 0)
+			(at 144.78 204.47 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -17231,7 +17231,7 @@
 			)
 		)
 		(property "Description" "ADG1414BRUZ analog SPST switch"
-			(at 144.78 201.93 0)
+			(at 144.78 204.47 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -18281,7 +18281,7 @@
 	)
 	(symbol
 		(lib_id "SeniorDesign:ADG1414BRU_1")
-		(at 160.02 227.33 0)
+		(at 160.02 229.87 0)
 		(unit 3)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -18289,7 +18289,7 @@
 		(dnp no)
 		(uuid "e0266ae6-7389-4f15-8642-2a0fa396d295")
 		(property "Reference" "U5"
-			(at 166.37 223.266 0)
+			(at 166.37 225.806 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -18298,7 +18298,7 @@
 			)
 		)
 		(property "Value" "ADG1414BRUZ"
-			(at 161.544 226.06 0)
+			(at 161.544 228.6 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -18307,7 +18307,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 160.02 227.33 0)
+			(at 160.02 229.87 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -18316,7 +18316,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 160.02 227.33 0)
+			(at 160.02 229.87 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -18325,7 +18325,7 @@
 			)
 		)
 		(property "Description" "ADG1414BRUZ analog SPST switch"
-			(at 160.02 227.33 0)
+			(at 160.02 229.87 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -19293,7 +19293,7 @@
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
-		(uuid "f7c872a7-3206-4698-9d83-37f13eecd9e5")
+		(uuid "f7c872a7-3206-4698-9d83-37f13eecd9e6")
 		(property "Reference" "#PWR073"
 			(at 172.72 64.77 0)
 			(effects
@@ -19339,7 +19339,7 @@
 			)
 		)
 		(pin "1"
-			(uuid "8d76b73f-2614-4010-a48e-3ced48f376f7")
+			(uuid "8d76b73f-2614-4010-a48e-3ced48f376f8")
 		)
 		(instances
 			(project "stm_controls"
@@ -19431,7 +19431,7 @@
 	)
 	(symbol
 		(lib_id "SeniorDesign:ADG1414BRU_1")
-		(at 144.78 176.53 0)
+		(at 144.78 179.07 0)
 		(unit 2)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -19439,7 +19439,7 @@
 		(dnp no)
 		(uuid "fe0c2fca-0c84-45f2-9973-7e32a9562f2e")
 		(property "Reference" "U10"
-			(at 151.13 172.974 0)
+			(at 151.13 175.514 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -19448,7 +19448,7 @@
 			)
 		)
 		(property "Value" "ADG1414BRUZ"
-			(at 147.32 175.26 0)
+			(at 147.32 177.8 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -19457,7 +19457,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 144.78 176.53 0)
+			(at 144.78 179.07 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -19466,7 +19466,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 144.78 176.53 0)
+			(at 144.78 179.07 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -19475,7 +19475,7 @@
 			)
 		)
 		(property "Description" "ADG1414BRUZ analog SPST switch"
-			(at 144.78 176.53 0)
+			(at 144.78 179.07 0)
 			(effects
 				(font
 					(size 1.27 1.27)
