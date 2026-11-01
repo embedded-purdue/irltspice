@@ -78,6 +78,23 @@ CPMAddPackage(
   GIT_TAG v8.3.2
 )
 
+# serialib
+# Don't want boost::asio, gotta get a lightweight cross-platform serial library
+# Doesn't have cmake tho so gotta do DOWNLOAD_ONLY
+CPMAddPackage(
+    NAME serialib_source
+    GITHUB_REPOSITORY "imabot2/serialib"
+    GIT_TAG "master"
+    DOWNLOAD_ONLY YES
+)
+# make a target out of it
+add_library(serialib STATIC 
+    "${serialib_source_SOURCE_DIR}/lib/serialib.cpp"
+    "${serialib_source_SOURCE_DIR}/lib/serialib.h"
+)
+# configure include directories for the target
+target_include_directories(serialib PUBLIC "${serialib_source_SOURCE_DIR}/lib")
+
 # nlohmann/json
 # Board topology templates are authored as JSON (with `//` comments). Kept out
 # of the public `include/` tree; only the driver's private headers/files use it.
@@ -155,8 +172,8 @@ target_include_directories(irldriver
     PUBLIC ${IRLC_DIR}/include
     PRIVATE ${IRLC_DIR}/src
 )
-target_link_libraries(irldriver PUBLIC irlcore irlproto Boost::asio Boost::outcome)
-target_link_libraries(irldriver PRIVATE nlohmann_json::nlohmann_json)
+target_link_libraries(irldriver PUBLIC irlcore irlproto)
+target_link_libraries(irldriver PRIVATE nlohmann_json::nlohmann_json serialib)
 
 # --- libirlc.a : the single artifact end users link. ---
 add_library(irlc STATIC)
@@ -164,14 +181,14 @@ target_include_directories(irlc PUBLIC ${IRLC_DIR}/include)
 target_link_libraries(irlc PRIVATE irlcore irlcompiler irldriver)
 # Static archives do not carry their dependencies, so re-expose the external
 # ones the packed objects need.
-target_link_libraries(irlc PUBLIC protobuf::libprotobuf Boost::asio Boost::outcome fast_float)
+target_link_libraries(irlc PUBLIC irlproto Boost::asio Boost::outcome fast_float)
 
 # Legacy single-binary CLI. `src/main.cpp` still pulls in the old `src/core`
 # compiler and does not build against the split yet. Re-enable once the
 # compiler/driver implementations land.
-# add_executable(irlc-cli)
-# target_sources(irlc-cli PRIVATE ${IRLC_DIR}/src/main.cpp)
-# target_link_libraries(irlc-cli PRIVATE irlc Boost::program_options)
+add_executable(test-xbar)
+target_sources(test-xbar PRIVATE ${IRLC_DIR}/src/test_xbar.cpp)
+target_link_libraries(test-xbar PRIVATE irlc)
 
 # =======
 # Testing
