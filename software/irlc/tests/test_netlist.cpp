@@ -346,3 +346,75 @@ TEST_CASE("copy_and_stitch copies, maps, and transfers adjacency", "[netlist]") 
     REQUIRE_FALSE(dst[*stitched].is_valid());
     REQUIRE_FALSE(dst[preexisting].is_valid());
 }
+
+TEST_CASE("Index handles behave like their underlying integer", "[netlist]") {
+    NetlistVertexIdx a{4};
+    NetlistVertexIdx b{2};
+
+    // Arithmetic and bitwise results stay the wrapper type, including when one
+    // operand is a plain integer.
+    static_assert(std::is_same_v<decltype(a + b), NetlistVertexIdx>);
+    static_assert(std::is_same_v<decltype(a + 1), NetlistVertexIdx>);
+    static_assert(std::is_same_v<decltype(1 + a), NetlistVertexIdx>);
+    static_assert(std::is_same_v<decltype(a < b), bool>);
+
+    REQUIRE((a + b).value == 6);
+    REQUIRE((a + 1).value == 5);
+    REQUIRE((1 + a).value == 5);
+    REQUIRE((a - b).value == 2);
+    REQUIRE((10 - a).value == 6);
+    REQUIRE((a * 3).value == 12);
+    REQUIRE((a / 2).value == 2);
+    REQUIRE((a % 3).value == 1);
+    REQUIRE((a & 6).value == 4);
+    REQUIRE((a | 3).value == 7);
+    REQUIRE((a ^ 1).value == 5);
+    REQUIRE((a << 1).value == 8);
+    REQUIRE((a >> 1).value == 2);
+    REQUIRE((~NetlistVertexIdx{0}).value == 0xFFFFFFFFu);
+    REQUIRE((-a).value == 0xFFFFFFFCu);
+    REQUIRE((+a).value == 4);
+
+    NetlistVertexIdx c = a;
+    REQUIRE((c += 1).value == 5);
+    REQUIRE((c -= 1).value == 4);
+    REQUIRE((c *= 3).value == 12);
+    REQUIRE((c /= 2).value == 6);
+    REQUIRE((c %= 4).value == 2);
+    REQUIRE((c &= 1u).value == 0);
+    REQUIRE((c |= 8u).value == 8);
+    REQUIRE((c ^= 1u).value == 9);
+    REQUIRE((c <<= 1).value == 18);
+    REQUIRE((c >>= 1).value == 9);
+
+    NetlistVertexIdx d{5};
+    REQUIRE((++d).value == 6);
+    REQUIRE((d++).value == 6);
+    REQUIRE(d.value == 7);
+    REQUIRE((--d).value == 6);
+    REQUIRE((d--).value == 6);
+    REQUIRE(d.value == 5);
+
+    REQUIRE(a == NetlistVertexIdx{4});
+    REQUIRE(a == 4);
+    REQUIRE(4 == a);
+    REQUIRE(a != b);
+    REQUIRE(a != 5);
+    REQUIRE(a > b);
+    REQUIRE(a >= 4);
+    REQUIRE(b < a);
+    REQUIRE(b <= 2);
+    REQUIRE((a <=> b) == std::strong_ordering::greater);
+    REQUIRE((a <=> 4) == std::strong_ordering::equal);
+    REQUIRE((4 <=> a) == std::strong_ordering::equal);
+
+    REQUIRE_FALSE(static_cast<bool>(NetlistVertexIdx{0}));
+    REQUIRE(static_cast<bool>(a));
+    REQUIRE_FALSE((a && NetlistVertexIdx{0}));
+    REQUIRE((a || NetlistVertexIdx{0}));
+    REQUIRE((a || 0));
+    REQUIRE_FALSE(!a);
+
+    NetlistEdgeIdx e{1};
+    REQUIRE((e + 1).value == 2);
+}
