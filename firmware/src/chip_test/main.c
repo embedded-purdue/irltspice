@@ -1,8 +1,8 @@
 #include "cd22m_test.h"
+#include "drivers/mcp_i2c.h"
+#include "drivers/mcp_spi.h"
 #include "hardware/gpio.h"
 #include "hardware/spi.h"
-#include "mcp_i2c.h"
-#include "mcp_spi.h"
 
 int main(void) {
 

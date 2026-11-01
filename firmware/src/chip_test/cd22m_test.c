@@ -1,4 +1,4 @@
-#include "common/cd22m.h"
+#include "drivers/cd22m.h"
 
 void cd22m_test(void) {
     cd22m_init();

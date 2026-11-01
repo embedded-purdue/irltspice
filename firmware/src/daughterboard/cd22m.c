@@ -1,4 +1,4 @@
-#include "common/cd22m.h"
+#include "drivers/cd22m.h"
 #include <stm32f4xx_hal.h>
 
 // Define this as the GPIO bus that the
@@ -28,7 +28,8 @@ void cd22m_set_switch(unsigned char ax, unsigned char ay, bool closed) {
     // Setting and resetting are both done with setting a bit to 1.
     uint32_t not_ax = (~ax & 0b1111), not_ay = (~ay & 0b111), not_closed = !closed;
     uint32_t set = (ax << cd22m_pin_ax[0]) | (ay << cd22m_pin_ay[0]) | (closed << cd22m_pin_data);
-    uint32_t reset = (not_ax << cd22m_pin_ax[0]) | (not_ay << cd22m_pin_ay[0]) | (not_closed << cd22m_pin_data);
+    uint32_t reset =
+        (not_ax << cd22m_pin_ax[0]) | (not_ay << cd22m_pin_ay[0]) | (not_closed << cd22m_pin_data);
     uint32_t bsrr = (reset << 16) | set;
     GPIOx->BSRR = bsrr;
 #else

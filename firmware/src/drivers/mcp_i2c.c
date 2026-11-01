@@ -1,4 +1,4 @@
-#include "mcp_i2c.h"
+#include "drivers/mcp_i2c.h"
 #include "hardware/gpio.h"
 #include "hardware/i2c.h"
 
