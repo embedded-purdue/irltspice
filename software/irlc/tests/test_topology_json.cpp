@@ -99,8 +99,8 @@ TEST_CASE("parseBoardTemplate reads the builtin mother", "[topology][json]") {
     auto *xbar = u1.get_data_if<NetlistVertexKind::TOPO_XBAR>();
     REQUIRE(xbar != nullptr);
     REQUIRE(xbar->ic_id == 1);
-    REQUIRE(xbar->daughter_id == NO_DAUGHTERBOARD);
-    REQUIRE(xbar->mother_id == NO_MOTHERBOARD);
+    REQUIRE(xbar->board_id.daughter_id == NO_DAUGHTERBOARD);
+    REQUIRE(xbar->board_id.mother_id == NO_MOTHERBOARD);
 
     // First pin is the cir_in row.
     NetlistEdge firstPin = edge_to(nl, u1, "cir_in");

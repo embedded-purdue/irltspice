@@ -23,14 +23,6 @@ namespace {
 
 template <typename> inline constexpr bool always_false = false;
 
-// Names of the daughterboard kinds, generated from the x-macro in command.hpp.
-constexpr std::array DAUGHTER_KIND_NAMES = {
-#define IRL_DAUGHTERBOARD_KIND(NAME, VALUE)                                                        \
-    std::pair{std::string_view(#NAME), DaughterboardKind::NAME},
-    IRL_DAUGHTERBOARD_KINDS(IRL_DAUGHTERBOARD_KIND)
-#undef IRL_DAUGHTERBOARD_KIND
-};
-
 // Payload parser for a single edge kind. Dispatches on the associated data
 // type, so adding an edge kind with one of the existing payloads needs no new
 // code here.
@@ -81,15 +73,21 @@ VertKindInfo<Kind>::AssociatedData vertDataImpl(nlohmann::json const &j) {
     } else if constexpr (std::is_same_v<Data, XbarId>) {
         return XbarId{
             .ic_id = j.at("ic_id"),
-            .daughter_id = NO_DAUGHTERBOARD,
-            .mother_id = NO_MOTHERBOARD,
+            .board_id =
+                {
+                    .mother_id = NO_MOTHERBOARD,
+                    .daughter_id = NO_DAUGHTERBOARD,
+                },
         };
     } else if constexpr (std::is_same_v<Data, SpstId>) {
         return SpstId{
             .sw_id = static_cast<uint8_t>(jsonToU32(j.at("sw_id"))),
             .ic_id = static_cast<uint8_t>(jsonToU32(j.at("ic_id"))),
-            .daughter_id = NO_DAUGHTERBOARD,
-            .mother_id = NO_MOTHERBOARD,
+            .board_id =
+                {
+                    .mother_id = NO_MOTHERBOARD,
+                    .daughter_id = NO_DAUGHTERBOARD,
+                },
         };
     } else {
         static_assert(always_false<Data>, "Unsupported edge payload type");
@@ -172,8 +170,8 @@ SpstId spstIdFromJson(nlohmann::json const &j) {
     SpstId out{};
     out.sw_id = static_cast<uint8_t>(jsonToU32(j.at("sw_id")));
     out.ic_id = static_cast<uint8_t>(jsonToU32(j.at("ic_id")));
-    out.daughter_id = NO_DAUGHTERBOARD;
-    out.mother_id = NO_MOTHERBOARD;
+    out.board_id.daughter_id = NO_DAUGHTERBOARD;
+    out.board_id.mother_id = NO_MOTHERBOARD;
     return out;
 }
 

@@ -11,6 +11,7 @@
 #include <unordered_set>
 #include <utility>
 
+#include <irl/detail/int_wrapper.hpp>
 #include <irl/detail/smallvec.hpp>
 #include <irl/detail/util.hpp>
 
@@ -26,21 +27,25 @@ static constexpr MotherId_t NO_MOTHERBOARD = std::numeric_limits<MotherId_t>::ma
 using DaughterId_t = uint8_t;
 static constexpr DaughterId_t NO_DAUGHTERBOARD = std::numeric_limits<DaughterId_t>::max();
 
+// Identifies a board in a topology
+// If it's a motherboard, daughter_id is NO_DAUGHTERBOARD
+struct BoardId {
+    MotherId_t mother_id = NO_MOTHERBOARD;
+    DaughterId_t daughter_id = NO_DAUGHTERBOARD;
+};
+
 // An identifier for a topology SPST switch
 // Effectively it's a hierarchical ID
 // There are multiple boards, each board has multiple switch ICs, and each switch IC has multiple
-// switches Each switch operates independently, though, so each needs a unique ID. The fields of
-// this struct should not be touched, unless in advanced use cases
+// switches Each switch operates independently, though, so each needs a unique ID. Don't touch
+// this post topology-creation.
 struct SpstId {
     // which switch on the ic is it?
-    uint8_t sw_id : 8;
+    uint8_t sw_id;
     // which ic on the board is it?
-    uint8_t ic_id : 8;
-    // Which daughterboard is this switch on
-    // NO_DAUGHTERBOARD -> not on a daughterboard (on motherboard)
-    DaughterId_t daughter_id : sizeof(DaughterId_t) * 8;
-    // which motherboard is this switch a child of
-    MotherId_t mother_id : sizeof(MotherId_t) * 8;
+    uint8_t ic_id;
+    // Which board is it?
+    BoardId board_id;
 };
 
 // An identifier for a topology crossbar switch
@@ -50,20 +55,11 @@ struct SpstId {
 // The fields of this struct should not be touched, unless in advanced use cases
 struct XbarId {
     // which ic on the board is it?
-    uint16_t ic_id : 16;
-    // Which daughterboard is this switch on
-    // NO_DAUGHTERBOARD -> not on a daughterboard (on motherboard)
-    DaughterId_t daughter_id : sizeof(DaughterId_t) * 8;
-    // which motherboard is this switch a child of
-    MotherId_t mother_id : sizeof(MotherId_t) * 8;
+    uint16_t ic_id;
+    // Which board is it?
+    BoardId board_id;
 };
 
-// A datastructure representing a motherboard to daughterboard port.
-// Declares which motherboard and daughterboard it connects
-struct MDPortId {
-    MotherId_t mother_id;
-    DaughterId_t daughter_id;
-};
 // A datastructure representing a motherboard to a motherboard port.
 // Declares which grand-motherboard and child of that grandmother motherboard it connects
 struct MMPortId {
@@ -78,17 +74,23 @@ inline constexpr netlistIdx_t NULL_INDEX = std::numeric_limits<netlistIdx_t>::ma
 
 // A handle to a vertex slot inside a Netlist. It is deliberately just a u32, so
 // it stays tiny and can be swapped/moved freely. NULL_INDEX is the null handle.
-struct NetlistVertexIdx {
+struct NetlistVertexIdx : IntWrapper<NetlistVertexIdx, netlistIdx_t> {
     netlistIdx_t value = NULL_INDEX;
     constexpr bool is_null() const { return value == NULL_INDEX; }
-    friend constexpr bool operator==(NetlistVertexIdx, NetlistVertexIdx) = default;
+
+    constexpr NetlistVertexIdx() = default;
+    constexpr NetlistVertexIdx(netlistIdx_t i) : value(i) {}
+    explicit constexpr operator netlistIdx_t() const { return value; }
 };
 
 // A handle to an edge slot inside a Netlist. See NetlistVertexIdx.
-struct NetlistEdgeIdx {
+struct NetlistEdgeIdx : IntWrapper<NetlistEdgeIdx, netlistIdx_t> {
     netlistIdx_t value = NULL_INDEX;
     constexpr bool is_null() const { return value == NULL_INDEX; }
-    friend constexpr bool operator==(NetlistEdgeIdx, NetlistEdgeIdx) = default;
+
+    constexpr NetlistEdgeIdx() = default;
+    constexpr NetlistEdgeIdx(netlistIdx_t i) : value(i) {}
+    explicit constexpr operator netlistIdx_t() const { return value; }
 };
 
 // A value associated with a vertex
@@ -101,7 +103,7 @@ union NetlistVertexValue {
     XbarId xbarId;
     SpstId spstId;
 
-    MDPortId motherToDaughterPort;
+    BoardId motherToDaughterPort;
     MMPortId motherToMotherPort;
     NoData empty;
     // Holds the next free NetlistVertexIdx when a vertex is on the free list.
@@ -379,6 +381,7 @@ template <bool IsConst> class NetlistVertexT {
 #endif
 
     inline NetlistVertexIdx idx() const { return mIdx; }
+    inline NetlistT *netlist() const { return mNetlist; }
 
     inline NetlistVertexKind kind() const { return IRL_GET_CHECKED(mKind); }
     inline std::string_view name() const {
@@ -554,12 +557,11 @@ template <bool IsConst, template <bool> typename ValT> class SoAIterT {
     friend class SoAIterT<true, ValT>;
     friend class Netlist;
 
-    // Only to be used by netlist
+  public:
     SoAIterT(NetlistT &netlist, netlistIdx_t index) noexcept : mNetlist(&netlist), mIndex(index) {
         skip_dead();
     }
 
-  public:
     using value_type = ValT<IsConst>;
     using reference = value_type;
     using pointer = void;
@@ -712,7 +714,7 @@ class Netlist {
         // Alter the spstId value of a copied-from vertex given its kind
         virtual void map_v_value(NetlistVertexKind kind, SpstId *val) const { return; }
         // Alter the motherToDaughterPort value of a copied-from vertex given its kind
-        virtual void map_v_value(NetlistVertexKind kind, MDPortId *val) const { return; }
+        virtual void map_v_value(NetlistVertexKind kind, BoardId *val) const { return; }
         // Alter the motherToMotherPort value of a copied-from vertex given its kind
         virtual void map_v_value(NetlistVertexKind kind, MMPortId *val) const { return; }
         // Do not overload. Only here to make templated implementation easier.

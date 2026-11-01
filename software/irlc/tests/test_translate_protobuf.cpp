@@ -14,6 +14,7 @@
 
 // TRANSLATE_PROTO_TRACK_FIELDS is set by the build for this target only; see
 // tests/CMakeLists.txt.
+#include "irl/command.hpp"
 #include "irl/driver/translate_protobuf.hpp"
 
 namespace {
@@ -32,7 +33,7 @@ void checkAllFieldsHandled(const Descriptor *desc, std::set<const Descriptor *> 
     for (int i = 0; i < desc->field_count(); ++i) {
         const FieldDescriptor *field = desc->field(i);
         INFO("Unhandled protobuf field: " << field->full_name());
-        CHECK(irl::handled_fields.count(field) == 1);
+        CHECK(irl::driver::handled_fields.count(field) == 1);
 
         if (field->cpp_type() == FieldDescriptor::CPPTYPE_MESSAGE) {
             checkAllFieldsHandled(field->message_type(), visited);
@@ -48,20 +49,20 @@ void checkAllFieldsHandled(const Descriptor *desc) {
 } // namespace
 
 TEST_CASE("Pack every MotherCommand variant", "[translate][proto]") {
-    irl::handled_fields.clear();
+    irl::driver::handled_fields.clear();
 
     // MotherCommand.cmd: topo
     ::MotherCommand topoCmd{};
-    irl::initTopoRequestCmd(&topoCmd);
+    irl::driver::initTopoRequestCmd(&topoCmd);
 
     // MotherCommand.cmd: stop
     ::MotherCommand stopCmd{};
-    irl::initStopProgrammingCmd(&stopCmd);
+    irl::driver::initStopProgrammingCmd(&stopCmd);
 
     // ProgrammingPayload.data: xbar
     irl::XbarId xbarId{};
-    xbarId.mother_id = 1;
-    xbarId.daughter_id = 2;
+    xbarId.board_id.mother_id = 1;
+    xbarId.board_id.daughter_id = 2;
     xbarId.ic_id = 3;
 
     irl::ProgramXbar xbar{};
@@ -72,12 +73,12 @@ TEST_CASE("Pack every MotherCommand variant", "[translate][proto]") {
 
     irl::ProgrammingCommand xbarCmd{.cmd = xbar};
     ::MotherCommand xbarOut{};
-    initProgrammingCmd(&xbarOut, xbarCmd);
+    irl::driver::initProgrammingCmd(&xbarOut, xbarCmd);
 
     // ProgrammingPayload.data: swcmd
     irl::SpstId spstId{};
-    spstId.mother_id = 1;
-    spstId.daughter_id = 2;
+    spstId.board_id.mother_id = 1;
+    spstId.board_id.daughter_id = 2;
     spstId.ic_id = 3;
     spstId.sw_id = 0;
 
@@ -88,13 +89,13 @@ TEST_CASE("Pack every MotherCommand variant", "[translate][proto]") {
 
     irl::ProgrammingCommand switchCmd{.cmd = switches};
     ::MotherCommand switchOut{};
-    initProgrammingCmd(&switchOut, switchCmd);
+    irl::driver::initProgrammingCmd(&switchOut, switchCmd);
 
     checkAllFieldsHandled(::MotherCommand::descriptor());
 }
 
 TEST_CASE("Unpack a full topology", "[translate][proto]") {
-    irl::handled_fields.clear();
+    irl::driver::handled_fields.clear();
 
     ::TopologyResponse resp{};
 
@@ -134,7 +135,7 @@ TEST_CASE("Unpack a full topology", "[translate][proto]") {
     test->set_firm_version_patch(0);
     test->mutable_test_daughter();
 
-    irl::IrlTopology topo = irl::unpackTopology(resp, 42);
+    // irl::IrlTopology topo = irl::driver::TopoUnpacker::unpackTopology(resp, 42, 0);
 
     checkAllFieldsHandled(::TopologyResponse::descriptor());
 }

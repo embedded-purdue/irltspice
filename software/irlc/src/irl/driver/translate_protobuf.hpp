@@ -4,8 +4,9 @@
 #include <irl/command.hpp>
 
 #include "command.pb.h"
+#include "irl/driver/topology_db.hpp"
 
-namespace irl {
+namespace irl::driver {
 
 using google::protobuf::FieldDescriptor;
 
@@ -33,6 +34,9 @@ void initStopProgrammingCmd(MotherCommand *out);
 
 void initTopoRequestCmd(MotherCommand *out);
 
-IrlTopology unpackTopology(TopologyResponsePB const &topo, size_t sequence_no);
+class TopoUnpacker {
+    static IrlTopology unpackTopology(TopologyResponsePB const &topo, LazyTopologyDB const &db,
+                                      size_t sequence_no);
+};
 
-} // namespace irl
+} // namespace irl::driver

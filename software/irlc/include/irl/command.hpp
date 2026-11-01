@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <variant>
+#include <vector>
 
 #include <irl/netlist.hpp>
 
@@ -71,6 +72,14 @@ enum class DaughterboardKind : uint32_t {
 #undef IRL_DAUGHTERBOARD_KIND
 };
 
+// Names of the daughterboard kinds, generated from the x-macro in command.hpp.
+constexpr std::array DAUGHTER_KIND_NAMES = {
+#define IRL_DAUGHTERBOARD_KIND(NAME, VALUE)                                                        \
+    std::pair{std::string_view(#NAME), DaughterboardKind::NAME},
+    IRL_DAUGHTERBOARD_KINDS(IRL_DAUGHTERBOARD_KIND)
+#undef IRL_DAUGHTERBOARD_KIND
+};
+
 // Topology information about a daughterboard slot
 // Could indicate that a daughterboard is not present in this slot
 struct DaughterboardTopology {
@@ -89,6 +98,28 @@ struct MotherboardTopology {
     DaughterboardTopology daughterboards[4];
 };
 
+// [begin,end) idxs of verts on a given board
+struct BoardSpan {
+    BoardId boardId;
+    std::pair<NetlistVertexIdx, NetlistVertexIdx> span;
+
+    bool operator<(BoardSpan &other) {
+        if (this->boardId.mother_id < other.boardId.mother_id) {
+            return true;
+        } else if (this->boardId.daughter_id == NO_DAUGHTERBOARD) {
+            return true;
+        } else if (other.boardId.daughter_id == NO_DAUGHTERBOARD) {
+            return false;
+        } else {
+            return this->boardId.daughter_id < other.boardId.daughter_id;
+        }
+    }
+};
+
+namespace driver {
+class TopoUnpacker;
+}
+
 // The topology of a connected board.
 // Required to perform any programming commands to enforce that the user knows
 // the current topology of the board.
@@ -104,6 +135,11 @@ class IrlTopology {
 
     Netlist mNetlist;
 
+    // A list of all the [begin, end) idxs and which board they are associated with
+    // Should remain sorted.
+    // Sorted!
+    std::vector<BoardSpan> mBoardSpans;
+
     // Internal detail used to keep track of when this IrlTopology was created.
     // If someone has changed the topology of the tspice (via connecting or
     // disconnecting a board), the driver will detect this and stop accepting
@@ -112,12 +148,19 @@ class IrlTopology {
 
     // IrlDriver has to be able to check topoSequenceNumber
     friend class IrlDriver;
+    friend class driver::TopoUnpacker;
 
   public:
     IrlTopology(MotherboardTopology *ms, size_t msz, Netlist &&nets, size_t topo)
         : mMotherboards(ms), mSizeMotherboards(msz), mNetlist(std::move(nets)),
           mTopoSequenceNumber(topo) {};
     ~IrlTopology() { delete[] mMotherboards; }
+    IrlTopology(IrlTopology &&other)
+        : mMotherboards(other.mMotherboards), mSizeMotherboards(other.mSizeMotherboards),
+          mNetlist(std::move(other.mNetlist)), mBoardSpans(std::move(other.mBoardSpans)),
+          mTopoSequenceNumber(other.mTopoSequenceNumber) {
+        other.mMotherboards = nullptr;
+    };
 
     Netlist &netlist() { return mNetlist; };
 
