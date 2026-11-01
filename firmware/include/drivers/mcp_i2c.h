@@ -1,5 +1,5 @@
-#ifndef MCP_I2C_H
-#define MCP_I2C_H
+#ifndef __DRIVERS_MCP_I2C_H__
+#define __DRIVERS_MCP_I2C_H__
 
 #include "hardware/i2c.h"
 

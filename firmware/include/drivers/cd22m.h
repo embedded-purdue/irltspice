@@ -1,5 +1,5 @@
-#ifndef __COMMON_CD22M_H__
-#define __COMMON_CD22M_H__
+#ifndef __DRIVERS_CD22M_H__
+#define __DRIVERS_CD22M_H__
 
 #include <stdbool.h>
 
@@ -22,4 +22,4 @@ void cd22m_init(void);
 void cd22m_set_switch(unsigned char ax, unsigned char ay, bool closed);
 void cd22m_reset(void); // set all switches to open
 
-#endif // !__COMMON_CD22M_H__ (should we have the exclamation mark or not?)
+#endif // !__DRIVERS_CD22M_H__ (should we have the exclamation mark or not?)
