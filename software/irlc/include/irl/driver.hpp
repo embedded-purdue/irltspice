@@ -9,7 +9,9 @@
 #include <irl/command.hpp>
 #include <irl/netlist.hpp>
 
-namespace irl {
+class serialib;
+
+namespace irl::driver {
 
 // An enum identifying the kind of error encountered while sending a command
 enum class CommandErrorCode {
@@ -63,6 +65,7 @@ class IrlDriver {
     };
     CommandResult<NoResponseExpected> doProgrammingInner(IrlTopology const *topo,
                                                          CmdCollection const &cmds);
+    serialib *mSerial;
 
   public:
     // Create a driver and bind it to a serial port.
@@ -130,6 +133,8 @@ class IrlDriver {
                                                              ProgrammingCommand const *cmd);
     // Get the topology of the connected tspice
     CommandResult<IrlTopology> queryTopology();
+
+    CommandResult<NoResponseExpected> testSendProg();
 };
 
-} // namespace irl
+} // namespace irl::driver
