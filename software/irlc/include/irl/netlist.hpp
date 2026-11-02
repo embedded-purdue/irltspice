@@ -48,6 +48,16 @@ struct SpstId {
     BoardId board_id;
 };
 
+// Identifies a programmable resistor that is part of a multi-resitor IC
+struct ResistorId {
+    // which resistor on the ic is it?
+    uint8_t r_id;
+    // which ic on the board is it?
+    uint8_t ic_id;
+    // Which board is it?
+    BoardId board_id;
+};
+
 // An identifier for a topology crossbar switch
 // Effectively it's a hierarchical ID
 // There are multiple boards, each board has multiple crossbar ICs
@@ -102,6 +112,7 @@ union NetlistVertexValue {
     // Unique across the entire topology
     XbarId xbarId;
     SpstId spstId;
+    ResistorId resistorId;
 
     BoardId motherToDaughterPort;
     MMPortId motherToMotherPort;
@@ -188,6 +199,7 @@ enum class NetlistVertexKind : uint16_t {
     VERT_KIND(Q_NPN, empty)                                                                        \
     VERT_KIND(TOPO_XBAR, xbarId)                                                                   \
     VERT_KIND(TOPO_SPST, spstId)                                                                   \
+    VERT_KIND(TOPO_DIGIPOT, resistorId)                                                            \
     VERT_KIND(PORT_GENERIC, empty)                                                                 \
     VERT_KIND(PORT_MM, motherToMotherPort)                                                         \
     VERT_KIND(PORT_MD, motherToDaughterPort)
@@ -707,14 +719,36 @@ class Netlist {
         virtual ~CopyMappings() = default;
         // Alter the name of a copied-from vertex
         virtual void map_v_name(std::string *name) const { return; }
+        // OPTIONAL TO OVERRIDE.
+        // This will be called only in NON-OVERLOADED map_v_value bodies for
+        // data members which have a BoardId inside them.
+        // See below default definitions. They are the only thing that calls this
+        virtual void map_v_value_default_board_id(NetlistVertexKind kind, BoardId *board_id) const {
+            return;
+        }
+
         // Alter the numeric value of a copied-from vertex given its kind
         virtual void map_v_value(NetlistVertexKind kind, double *val) const { return; }
         // Alter the xbarId value of a copied-from vertex given its kind
-        virtual void map_v_value(NetlistVertexKind kind, XbarId *val) const { return; }
+        virtual void map_v_value(NetlistVertexKind kind, XbarId *val) const {
+            map_v_value_default_board_id(kind, &val->board_id);
+            return;
+        }
         // Alter the spstId value of a copied-from vertex given its kind
-        virtual void map_v_value(NetlistVertexKind kind, SpstId *val) const { return; }
+        virtual void map_v_value(NetlistVertexKind kind, SpstId *val) const {
+            map_v_value_default_board_id(kind, &val->board_id);
+            return;
+        }
+        // Alter the resistorId value of a copied-from vertex given its kind
+        virtual void map_v_value(NetlistVertexKind kind, ResistorId *val) const {
+            map_v_value_default_board_id(kind, &val->board_id);
+            return;
+        }
         // Alter the motherToDaughterPort value of a copied-from vertex given its kind
-        virtual void map_v_value(NetlistVertexKind kind, BoardId *val) const { return; }
+        virtual void map_v_value(NetlistVertexKind kind, BoardId *val) const {
+            map_v_value_default_board_id(kind, val);
+            return;
+        }
         // Alter the motherToMotherPort value of a copied-from vertex given its kind
         virtual void map_v_value(NetlistVertexKind kind, MMPortId *val) const { return; }
         // Do not overload. Only here to make templated implementation easier.

@@ -30,6 +30,14 @@ struct ProgramLogicalSwitch {
     bool connect;
 };
 
+// Program an individual resistor (part of a multi-resistor IC)
+struct ProgramResistor {
+    // The logical ID of the switch to program
+    ResistorId resistor_id;
+    // The resistance in ohms
+    double resistance;
+};
+
 // ADVANCED USE ONLY
 // This command programs different switches depending on its destination
 // Program some or all switches on a physical switch IC
@@ -47,7 +55,7 @@ struct ProgramPhysicalSwitches {
 // A programming command to send to the tspice
 struct ProgrammingCommand {
     // The command to send
-    std::variant<ProgramXbar, ProgramLogicalSwitch, ProgramPhysicalSwitches> cmd;
+    std::variant<ProgramXbar, ProgramLogicalSwitch, ProgramPhysicalSwitches, ProgramResistor> cmd;
 };
 
 // SemVer of the firmware running on a mother/daughter board
