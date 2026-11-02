@@ -124,7 +124,82 @@ R"json(
                 { "side":"COL","index":15 ,"dest":"IO_2", "len":0.0 },
             ]},
 
-            // End crossbars. Begin resistors:
+            // End crossbars. Begin switches:
+            "U25_S1" : {"kind":"TOPO_SPST", "ic_id":25, "sw_id":0 "pins": [
+                {"dest":"B0", "len":"0.0"}, {"dest":"C0", "len":0.0}, ]},
+            "U25_S2" : {"kind":"TOPO_SPST", "ic_id":25, "sw_id":1 "pins": [
+                {"dest":"B1", "len":"0.0"}, {"dest":"C1", "len":0.0}, ]},
+            "U25_S3" : {"kind":"TOPO_SPST", "ic_id":25, "sw_id":2 "pins": [
+                {"dest":"B2", "len":"0.0"}, {"dest":"C2", "len":0.0}, ]},
+            "U25_S4" : {"kind":"TOPO_SPST", "ic_id":25, "sw_id":3 "pins": [
+                {"dest":"B3", "len":"0.0"}, {"dest":"C3", "len":0.0}, ]},
+            "U25_S5" : {"kind":"TOPO_SPST", "ic_id":25, "sw_id":4 "pins": [
+                {"dest":"B4", "len":"0.0"}, {"dest":"C4", "len":0.0}, ]},
+            "U25_S6" : {"kind":"TOPO_SPST", "ic_id":25, "sw_id":5 "pins": [
+                {"dest":"B5", "len":"0.0"}, {"dest":"C5", "len":0.0}, ]},
+            "U25_S7" : {"kind":"TOPO_SPST", "ic_id":25, "sw_id":6 "pins": [
+                {"dest":"B6", "len":"0.0"}, {"dest":"C6", "len":0.0}, ]},
+            "U25_S8" : {"kind":"TOPO_SPST", "ic_id":25, "sw_id":7 "pins": [
+                {"dest":"B7", "len":"0.0"}, {"dest":"C7", "len":0.0}, ]},
+
+            "U26_S1" : {"kind":"TOPO_SPST", "ic_id":26, "sw_id":0 "pins": [
+                {"dest":"C0", "len":"0.0"}, {"dest":"D0", "len":0.0}, ]},
+            "U26_S2" : {"kind":"TOPO_SPST", "ic_id":26, "sw_id":1 "pins": [
+                {"dest":"C1", "len":"0.0"}, {"dest":"D1", "len":0.0}, ]},
+            "U26_S3" : {"kind":"TOPO_SPST", "ic_id":26, "sw_id":2 "pins": [
+                {"dest":"C2", "len":"0.0"}, {"dest":"D2", "len":0.0}, ]},
+            "U26_S4" : {"kind":"TOPO_SPST", "ic_id":26, "sw_id":3 "pins": [
+                {"dest":"C3", "len":"0.0"}, {"dest":"D3", "len":0.0}, ]},
+            "U26_S5" : {"kind":"TOPO_SPST", "ic_id":26, "sw_id":4 "pins": [
+                {"dest":"C4", "len":"0.0"}, {"dest":"D4", "len":0.0}, ]},
+            "U26_S6" : {"kind":"TOPO_SPST", "ic_id":26, "sw_id":5 "pins": [
+                {"dest":"C5", "len":"0.0"}, {"dest":"D5", "len":0.0}, ]},
+            "U26_S7" : {"kind":"TOPO_SPST", "ic_id":26, "sw_id":6 "pins": [
+                {"dest":"C6", "len":"0.0"}, {"dest":"D6", "len":0.0}, ]},
+            "U26_S8" : {"kind":"TOPO_SPST", "ic_id":26, "sw_id":7 "pins": [
+                {"dest":"C7", "len":"0.0"}, {"dest":"D7", "len":0.0}, ]},
+
+            "U27_S1" : {"kind":"TOPO_SPST", "ic_id":27, "sw_id":0 "pins": [
+                {"dest":"A0", "len":"0.0"}, {"dest":"B0", "len":0.0}, ]},
+            "U27_S2" : {"kind":"TOPO_SPST", "ic_id":27, "sw_id":1 "pins": [
+                {"dest":"A1", "len":"0.0"}, {"dest":"B1", "len":0.0}, ]},
+            "U27_S3" : {"kind":"TOPO_SPST", "ic_id":27, "sw_id":2 "pins": [
+                {"dest":"A2", "len":"0.0"}, {"dest":"B2", "len":0.0}, ]},
+            "U27_S4" : {"kind":"TOPO_SPST", "ic_id":27, "sw_id":3 "pins": [
+                {"dest":"A3", "len":"0.0"}, {"dest":"B3", "len":0.0}, ]},
+            "U27_S5" : {"kind":"TOPO_SPST", "ic_id":27, "sw_id":4 "pins": [
+                {"dest":"A4", "len":"0.0"}, {"dest":"B4", "len":0.0}, ]},
+            "U27_S6" : {"kind":"TOPO_SPST", "ic_id":27, "sw_id":5 "pins": [
+                {"dest":"A5", "len":"0.0"}, {"dest":"B5", "len":0.0}, ]},
+            "U27_S7" : {"kind":"TOPO_SPST", "ic_id":27, "sw_id":6 "pins": [
+                {"dest":"A6", "len":"0.0"}, {"dest":"B6", "len":0.0}, ]},
+            "U27_S8" : {"kind":"TOPO_SPST", "ic_id":27, "sw_id":7 "pins": [
+                {"dest":"A7", "len":"0.0"}, {"dest":"B7", "len":0.0}, ]},
+
+            "U28_S1" : {"kind":"TOPO_SPST", "ic_id":28, "sw_id":0 "pins": [
+                {"dest":"D0", "len":"0.0"}, {"dest":"A0", "len":0.0}, ]},
+            "U28_S2" : {"kind":"TOPO_SPST", "ic_id":28, "sw_id":1 "pins": [
+                {"dest":"D1", "len":"0.0"}, {"dest":"A1", "len":0.0}, ]},
+            "U28_S3" : {"kind":"TOPO_SPST", "ic_id":28, "sw_id":2 "pins": [
+                {"dest":"D2", "len":"0.0"}, {"dest":"A2", "len":0.0}, ]},
+            "U28_S4" : {"kind":"TOPO_SPST", "ic_id":28, "sw_id":3 "pins": [
+                {"dest":"D3", "len":"0.0"}, {"dest":"A3", "len":0.0}, ]},
+            "U28_S5" : {"kind":"TOPO_SPST", "ic_id":28, "sw_id":4 "pins": [
+                {"dest":"D4", "len":"0.0"}, {"dest":"A4", "len":0.0}, ]},
+            "U28_S6" : {"kind":"TOPO_SPST", "ic_id":28, "sw_id":5 "pins": [
+                {"dest":"D5", "len":"0.0"}, {"dest":"A5", "len":0.0}, ]},
+            "U28_S7" : {"kind":"TOPO_SPST", "ic_id":28, "sw_id":6 "pins": [
+                {"dest":"D6", "len":"0.0"}, {"dest":"A6", "len":0.0}, ]},
+            "U28_S8" : {"kind":"TOPO_SPST", "ic_id":28, "sw_id":7 "pins": [
+                {"dest":"D7", "len":"0.0"}, {"dest":"A7", "len":0.0}, ]},
+
+            // End switches. Begin resistors:
+            // Note that each bruz is 0-indexed for the pots on it
+            "U????": {"kind":"TOPO_DIGIPOT", "ic_id":25, "r_id":0, "pins": [
+                {"dest":"R0A"}
+            ]}
+
+            // End resistors. Begin Caps:
 
         }
     }

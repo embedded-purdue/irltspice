@@ -20,6 +20,7 @@ using ProgrammingCommandPB = ::ProgrammingCommand;
 using MotherCommandPB = ::MotherCommand;
 using ProgramXbarPB = ::ProgramXbar;
 using ProgramSwitchPB = ::ProgramSwitch;
+using ProgramResistorPB = ::ProgramResistor;
 using MotherboardTopologyPB = ::MotherboardTopology;
 using DaughterboardTopologyPB = ::DaughterboardTopology;
 using TopologyResponsePB = ::TopologyResponse;

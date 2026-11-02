@@ -51,6 +51,7 @@ void insert_field_desc(Descriptor const *desc, const char *name) {
 static void initProgrammingCmdDest(ProgrammingCommandPB *out, auto const &dest);
 static void initProgramXbar(ProgramXbarPB *out, ProgramXbar const &pxb);
 static void initProgramSwitches(ProgramSwitchPB *out, ProgramPhysicalSwitches const &pxb);
+void initProgramResistor(ProgramResistorPB *out, ProgramResistor const &pr);
 
 void initProgrammingCmd(MotherCommandPB *out, ProgrammingCommand const &pcmd) {
     ProgrammingCommandPB *subout = GET_MUTABLE(*out, prog);
@@ -67,6 +68,10 @@ void initProgrammingCmd(MotherCommandPB *out, ProgrammingCommand const &pcmd) {
                    [&](ProgramPhysicalSwitches const &psw) {
                        initProgrammingCmdDest(subout, psw.spst_ic_id);
                        initProgramSwitches(GET_MUTABLE(*GET_MUTABLE(*subout, payload), swcmd), psw);
+                   },
+                   [&](ProgramResistor const &pr) {
+                       initProgrammingCmdDest(subout, pr.resistor_id);
+                       initProgramResistor(GET_MUTABLE(*GET_MUTABLE(*subout, payload), rcmd), pr);
                    },
                },
                pcmd.cmd);
@@ -90,6 +95,12 @@ void initProgramSwitches(ProgramSwitchPB *out, ProgramPhysicalSwitches const &ps
     SET_FIELD(*out, onoff_bitmask, psw.onoff_bitmask);
 }
 
+void initProgramResistor(ProgramResistorPB *out, ProgramResistor const &pr) {
+    SET_FIELD(*out, resistor_id, pr.resistor_id.r_id);
+    IRL_ASSERT(false, "TODO: Quantize resistance!");
+    SET_FIELD(*out, resistance, *reinterpret_cast<uint32_t const *>(&pr.resistance));
+}
+
 void initStopProgrammingCmd(MotherCommandPB *out) { (void)GET_MUTABLE(*out, stop); }
 
 void initTopoRequestCmd(MotherCommand *out) { (void)GET_MUTABLE(*out, topo); }
@@ -103,7 +114,7 @@ static void unpackDaughterboardTopology(DaughterboardTopology *out,
                                         DaughterboardTopologyPB const &dtopo);
 
 // Mappings to use for a motherboard
-class MotherMappings : public Netlist::CopyMappings {
+class MotherMappings final : public Netlist::CopyMappings {
   public:
     MotherId_t mCurrentMother;
 
@@ -113,14 +124,13 @@ class MotherMappings : public Netlist::CopyMappings {
         name->insert(0, std::format("m{}:", mCurrentMother));
     }
 
-    virtual void map_v_value(NetlistVertexKind kind, XbarId *val) const override {
-        val->board_id.mother_id = mCurrentMother;
-        val->board_id.daughter_id = NO_DAUGHTERBOARD;
+    virtual void map_v_value_default_board_id(NetlistVertexKind kind,
+                                              BoardId *board_id) const override {
+        board_id->mother_id = mCurrentMother;
+        board_id->daughter_id = NO_DAUGHTERBOARD;
+        return;
     }
-    virtual void map_v_value(NetlistVertexKind kind, SpstId *val) const override {
-        val->board_id.mother_id = mCurrentMother;
-        val->board_id.daughter_id = NO_DAUGHTERBOARD;
-    }
+
     virtual void map_v_value(NetlistVertexKind kind, BoardId *val) const override {
         val->mother_id = mCurrentMother;
         // Don't alter the daughter as that should be in the template
@@ -132,7 +142,7 @@ class MotherMappings : public Netlist::CopyMappings {
 };
 
 // Mappings to use for a daughterboard
-class DaughterMappings : public Netlist::CopyMappings {
+class DaughterMappings final : public Netlist::CopyMappings {
   public:
     MotherId_t mCurrentMother;
     DaughterId_t mCurrentDaughter;
@@ -143,13 +153,11 @@ class DaughterMappings : public Netlist::CopyMappings {
         name->insert(0, std::format("m{}d{}:", mCurrentMother, mCurrentDaughter));
     }
 
-    virtual void map_v_value(NetlistVertexKind kind, XbarId *val) const override {
-        val->board_id.mother_id = mCurrentMother;
-        val->board_id.daughter_id = mCurrentDaughter;
-    }
-    virtual void map_v_value(NetlistVertexKind kind, SpstId *val) const override {
-        val->board_id.mother_id = mCurrentMother;
-        val->board_id.daughter_id = mCurrentDaughter;
+    virtual void map_v_value_default_board_id(NetlistVertexKind kind,
+                                              BoardId *board_id) const override {
+        board_id->mother_id = mCurrentMother;
+        board_id->daughter_id = mCurrentDaughter;
+        return;
     }
     virtual void map_v_value(NetlistVertexKind kind, BoardId *val) const override {
         IRL_ASSERT(false, "Daughterboard contains multiple MD ports");

@@ -89,6 +89,16 @@ VertKindInfo<Kind>::AssociatedData vertDataImpl(nlohmann::json const &j) {
                     .daughter_id = NO_DAUGHTERBOARD,
                 },
         };
+    } else if constexpr (std::is_same_v<Data, ResistorId>) {
+        return ResistorId{
+            .r_id = static_cast<uint8_t>(jsonToU32(j.at("r_id"))),
+            .ic_id = static_cast<uint8_t>(jsonToU32(j.at("ic_id"))),
+            .board_id =
+                {
+                    .mother_id = NO_MOTHERBOARD,
+                    .daughter_id = NO_DAUGHTERBOARD,
+                },
+        };
     } else {
         static_assert(always_false<Data>, "Unsupported edge payload type");
     }
