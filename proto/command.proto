@@ -71,10 +71,23 @@ message ProgramSwitch {
     uint32 onoff_bitmask = 3;
 }
 
+// Send info to program an individual resistor on a resistor IC
+message ProgramResistor {
+    // Which IC to program
+    uint32 ic_id = 1;
+    // Which of the resistors on the IC do we program?
+    uint32 resistor_id = 2;
+    // What should we set its resistance to?
+    // This is already quantized, so if the resistor is a 100k with 8-bit resolution,
+    // then 0xFF means 100k, and if it's a 150k with 16-bit resolution then 0xFF means 75k.
+    uint32 resistance = 3;
+}
+
 message ProgrammingPayload {
     oneof data {
         ProgramXbar xbar = 1;
         ProgramSwitch swcmd = 2;
+        ProgramResistor rcmd = 3;
     }
 }
 
