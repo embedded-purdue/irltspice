@@ -45,7 +45,6 @@ target_link_options(irlcompiler-tests PRIVATE -g -fsanitize=address)
 
 target_link_libraries(irlcompiler-tests
     PRIVATE
-        irlcore
         irlcompiler
         Catch2::Catch2WithMain
 )
