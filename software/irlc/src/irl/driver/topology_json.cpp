@@ -27,14 +27,14 @@ template <typename> inline constexpr bool always_false = false;
 // type, so adding an edge kind with one of the existing payloads needs no new
 // code here.
 template <NetlistEdgeKind Kind>
-EdgeKindInfo<Kind>::AssociatedData edgeDataImpl(nlohmann::json const *data) {
+EdgeKindInfo<Kind>::AssociatedData edgeDataImpl(nlohmann::json const &data) {
     using Data = typename EdgeKindInfo<Kind>::AssociatedData;
     if constexpr (std::is_same_v<Data, NoData>) {
         return NoData{};
     } else if constexpr (std::is_same_v<Data, uint32_t>) {
-        return jsonToU32(data->at("index"));
+        return jsonToU32(data.at("index"));
     } else if constexpr (std::is_same_v<Data, XbarPinId>) {
-        return xbarPinIdFromJson(*data);
+        return xbarPinIdFromJson(data);
     } else {
         static_assert(always_false<Data>, "Unsupported edge payload type");
     }
@@ -224,12 +224,10 @@ NetlistEdgeIdx ParseCtx::addPinAndNet(NetlistVertexIdx component_idx,
 
     NetlistEdgeIdx idx;
 
-    nlohmann::json const *datajson = pinJson.contains("data") ? &pinJson.at("data") : nullptr;
-
 #define EDGE_KIND(NAME, A, UNION_FIELD)                                                            \
     case NetlistEdgeKind::NAME:                                                                    \
         idx = netlist->connect<NetlistEdgeKind::NAME>(                                             \
-            component_idx, net_idx, edgeDataImpl<NetlistEdgeKind::NAME>(datajson), len);           \
+            component_idx, net_idx, edgeDataImpl<NetlistEdgeKind::NAME>(pinJson), len);            \
         break;
 
     switch (kind) { EDGE_KINDS }
