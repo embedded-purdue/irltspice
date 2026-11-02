@@ -1,7 +1,6 @@
 #pragma once
 
 #include <iostream>
-#include <memory>
 #include <ostream>
 #include <string_view>
 #include <vector>
@@ -47,7 +46,7 @@ enum class NetlistFileKind {
 // If failures is nonempty, the parse failed, and it is generally not advised to access netlist
 struct ParseResult {
     // The netlist generated from this parse
-    std::unique_ptr<Netlist> netlist;
+    Netlist netlist;
     // The failures that occurred during parse
     std::vector<ParseError> failures;
     // What kind of file was detected (or specified at callsite if not auto-detecting)

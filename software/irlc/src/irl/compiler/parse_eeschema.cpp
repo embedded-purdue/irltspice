@@ -12,7 +12,7 @@ bool EeschemaParser::matches_filename(string_view file_name) {
 
 ParseResult EeschemaParser::try_parse(string_view file_contets, string_view file_name) const {
     return ParseResult{
-        .netlist{nullptr},
+        .netlist{},
         .failures{ParseError{.message = "Eeschema parsing not yet implemented",
                              .problematic_region{file_contets},
                              .lines_begin = 0,

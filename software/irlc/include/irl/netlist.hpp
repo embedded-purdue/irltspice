@@ -15,6 +15,8 @@
 #include <irl/detail/smallvec.hpp>
 #include <irl/detail/util.hpp>
 
+#include "irl/owned_span.hpp"
+
 namespace irl {
 
 struct NoData {};
@@ -56,6 +58,12 @@ struct ResistorId {
     uint8_t ic_id;
     // Which board is it?
     BoardId board_id;
+};
+
+// Represents a bank of capacitors in parallel, each can be connected or disconnected by a spst.
+// Pointee is owned by the IrlTopology associated with this
+struct CapArray {
+    OwnedSpan<std::pair<SpstId, double>> capacitances;
 };
 
 // An identifier for a topology crossbar switch
@@ -113,6 +121,7 @@ union NetlistVertexValue {
     XbarId xbarId;
     SpstId spstId;
     ResistorId resistorId;
+    CapArray capacitorArray;
 
     BoardId motherToDaughterPort;
     MMPortId motherToMotherPort;
@@ -200,6 +209,7 @@ enum class NetlistVertexKind : uint16_t {
     VERT_KIND(TOPO_XBAR, xbarId)                                                                   \
     VERT_KIND(TOPO_SPST, spstId)                                                                   \
     VERT_KIND(TOPO_DIGIPOT, resistorId)                                                            \
+    VERT_KIND(TOPO_CAP_ARRAY, capacitorArray)                                                      \
     VERT_KIND(PORT_GENERIC, empty)                                                                 \
     VERT_KIND(PORT_MM, motherToMotherPort)                                                         \
     VERT_KIND(PORT_MD, motherToDaughterPort)
@@ -218,7 +228,7 @@ template <NetlistVertexKind Kind> class VertKindInfo {};
     template <> class VertKindInfo<NetlistVertexKind::NAME> {                                      \
       public:                                                                                      \
         /* The NetlistVertexValue type associated with this vertex kind */                         \
-        using AssociatedData = decltype(NetlistVertexValue{}.UNION_FIELD);                         \
+        using AssociatedData = decltype(NetlistVertexValue::UNION_FIELD);                          \
         static constexpr auto AssociatedField = &NetlistVertexValue::UNION_FIELD;                  \
         static constexpr std::string_view Name = #NAME;                                            \
         static constexpr bool IsNet = Name.starts_with("NET");                                     \
@@ -718,39 +728,40 @@ class Netlist {
       public:
         virtual ~CopyMappings() = default;
         // Alter the name of a copied-from vertex
-        virtual void map_v_name(std::string *name) const { return; }
+        virtual void map_v_name(std::string *name) const {}
         // OPTIONAL TO OVERRIDE.
         // This will be called only in NON-OVERLOADED map_v_value bodies for
         // data members which have a BoardId inside them.
         // See below default definitions. They are the only thing that calls this
         virtual void map_v_value_default_board_id(NetlistVertexKind kind, BoardId *board_id) const {
-            return;
         }
 
         // Alter the numeric value of a copied-from vertex given its kind
-        virtual void map_v_value(NetlistVertexKind kind, double *val) const { return; }
+        virtual void map_v_value(NetlistVertexKind kind, double *val) const {}
         // Alter the xbarId value of a copied-from vertex given its kind
         virtual void map_v_value(NetlistVertexKind kind, XbarId *val) const {
             map_v_value_default_board_id(kind, &val->board_id);
-            return;
         }
         // Alter the spstId value of a copied-from vertex given its kind
         virtual void map_v_value(NetlistVertexKind kind, SpstId *val) const {
             map_v_value_default_board_id(kind, &val->board_id);
-            return;
         }
         // Alter the resistorId value of a copied-from vertex given its kind
         virtual void map_v_value(NetlistVertexKind kind, ResistorId *val) const {
             map_v_value_default_board_id(kind, &val->board_id);
-            return;
+        }
+        // Alter the capacitorArray value of a copied-from vertex given its kind
+        virtual void map_v_value(NetlistVertexKind kind, CapArray *val) const {
+            for (auto &[spst_id, cap] : val->capacitances) {
+                map_v_value_default_board_id(kind, &spst_id.board_id);
+            }
         }
         // Alter the motherToDaughterPort value of a copied-from vertex given its kind
         virtual void map_v_value(NetlistVertexKind kind, BoardId *val) const {
             map_v_value_default_board_id(kind, val);
-            return;
         }
         // Alter the motherToMotherPort value of a copied-from vertex given its kind
-        virtual void map_v_value(NetlistVertexKind kind, MMPortId *val) const { return; }
+        virtual void map_v_value(NetlistVertexKind kind, MMPortId *val) const {}
         // Do not overload. Only here to make templated implementation easier.
         inline void map_v_value(NetlistVertexKind kind, NoData *val) const {}
     };
