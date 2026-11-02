@@ -9,6 +9,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 
 #include "fast_float/fast_float.h"
@@ -17,16 +18,16 @@
 #include "util/boost_util.hpp"
 
 namespace irl {
-using detail::ASSERT;
 using detail::EdgeList;
 using detail::SmallStr;
 using detail::SmallVec;
 
+// Order is destructor order
 #define VERTEX_FIELDS                                                                              \
-    FIELD(NetlistVertexKind, mKind_arr)                                                            \
-    FIELD(SmallStr, mName_arr)                                                                     \
     FIELD(NetlistVertexValue, mValue_arr)                                                          \
-    FIELD(EdgeList, mEdges_arr)
+    FIELD(SmallStr, mName_arr)                                                                     \
+    FIELD(EdgeList, mEdges_arr)                                                                    \
+    FIELD(NetlistVertexKind, mKind_arr)
 
 #define EDGE_FIELDS                                                                                \
     FIELD(NetlistEdgeKind, mKind_arr)                                                              \
@@ -34,6 +35,36 @@ using detail::SmallVec;
     FIELD(NetlistVertexIdx, mNet_arr)                                                              \
     FIELD(double, mTraceLength_arr)                                                                \
     FIELD(NetlistEdgeValue, mValue_arr)
+
+void destroy_vertex(detail::NetlistVertexFields &v, size_t i,
+                    auto detail::NetlistVertexFields::*ptr) {
+    auto *to_destroy = &(v.*ptr)[i];
+    if constexpr (std::is_same_v<decltype(to_destroy), NetlistVertexValue *>) {
+        switch (v.mKind_arr[i]) {
+#define VERT_KIND(NAME, UNION_FIELD)                                                               \
+    case NetlistVertexKind::NAME:                                                                  \
+        std::destroy_at(&(to_destroy->*VertKindInfo<NetlistVertexKind::NAME>::AssociatedField));   \
+        break;
+            VERT_KINDS
+#undef VERT_KIND
+        }
+    } else {
+        std::destroy_at(to_destroy);
+    }
+}
+template <NetlistVertexKind kind>
+void init_vertex(detail::NetlistVertexFields &v, size_t i, auto detail::NetlistVertexFields::*ptr,
+                 auto &&val_to_move_from) {
+    auto *to_init = &(v.*ptr)[i];
+    if constexpr (std::is_same_v<decltype(to_init), NetlistVertexKind *>) {
+        *to_init = kind;
+    } else if constexpr (std::is_same_v<decltype(to_init), NetlistVertexValue *>) {
+        new (&(to_init->*VertKindInfo<kind>::AssociatedField))
+            VertKindInfo<kind>::AssociatedData(std::move(val_to_move_from));
+    } else {
+        new (to_init) auto(std::move(val_to_move_from));
+    }
+}
 
 void free_vertex_fields(detail::NetlistVertexFields &v) noexcept {
 #define FIELD(T, N) std::free(v.N);
@@ -83,7 +114,7 @@ Netlist &Netlist::operator=(Netlist &&other) {
 // Destroy every live element and release all column storage.
 void Netlist::destroy_all() noexcept {
     mVertexNames.clear();
-#define FIELD(T, N) std::destroy_at(arr.N + i);
+#define FIELD(T, N) destroy_vertex(mVertices, i, &NetlistVertex::Fields::N);
     {
         auto arr = mVertices;
         for (netlistIdx_t i = 0; i < mVertices.size; ++i) {
@@ -92,6 +123,8 @@ void Netlist::destroy_all() noexcept {
             }
         }
     }
+#undef FIELD
+#define FIELD(T, N) std::destroy_at(arr.N + i);
     auto arr = mEdges;
     for (netlistIdx_t i = 0; i < mEdges.size; ++i) {
         if (mEdges.mKind_arr[i] != EDGE_DEAD) {
@@ -181,12 +214,16 @@ namespace detail {
 
 class NetlistHelper {
   public:
-#define FIELD(T, N) , T &&N##_val
-    static inline void init_vert(Netlist *netlist, NetlistVertexIdx i VERTEX_FIELDS) {
-#undef FIELD
+    template <NetlistVertexKind kind>
+    static inline void init_vert(Netlist *netlist, NetlistVertexIdx i,
+                                 VertKindInfo<kind>::AssociatedData &&mValue_arr_val,
+                                 SmallStr &&mName_arr_val, EdgeList &&mEdges_arr_val) {
         NetlistVertexFields *verts = &netlist->mVertices;
 
-#define FIELD(T, N) new (verts->N + i.value) T(std::move(N##_val));
+        auto mKind_arr_val = kind;
+
+#define FIELD(T, N)                                                                                \
+    init_vertex<kind>(*verts, i.value, &detail::NetlistVertexFields::N, std::move(N##_val));
         VERTEX_FIELDS
 #undef FIELD
 
@@ -297,11 +334,8 @@ NetlistVertexIdx Netlist::new_vertex(std::string_view name,
     NetlistVertexIdx idx = alloc_vertex_slot();
     // Initialize the vertex but leave the union just default initialized
     // This checks for name collisions
-    Helper::init_vert(this, idx, newKind, SmallStr{name.begin(), name.end()}, {}, EdgeList{});
-    // And initialize the enum in place later
-    auto loc = mVertices.mValue_arr + idx.value;
-    new (&(loc->*VertKindInfo<newKind>::AssociatedField))
-        VertKindInfo<newKind>::AssociatedData(std::move(data));
+    Helper::init_vert<newKind>(this, idx, std::move(data), SmallStr{name.begin(), name.end()},
+                               EdgeList{});
     return idx;
 }
 
@@ -444,37 +478,40 @@ Netlist::copy_and_stitch(NetlistVertex this_join, const Netlist &other, NetlistV
 
         std::string_view old_name = other_vert.name();
         std::span old_edge_list = other_vert.connections();
-        auto kind = other_vert.kind();
+        NetlistVertexKind kind = other_vert.kind();
 
-        NetlistVertexValue new_val{};
         std::string new_name{old_name};
         EdgeList new_edge_list{std::to_address(old_edge_list.begin()),
                                std::to_address(old_edge_list.end())};
 
         // Map name
         mappings->map_v_name(&new_name);
-
-#define VERT_KIND(NAME, UNION_FIELD)                                                               \
-    case NAME:                                                                                     \
-        new_val.UNION_FIELD = *other_vert.get_data_if<NAME>();                                     \
-        mappings->map_v_value(NAME, &(new_val.UNION_FIELD));                                       \
-        break;
-
-        // Map value
-        switch (kind) {
-            using enum NetlistVertexKind;
-            VERT_KINDS
-        }
+        // new_name is still a std::string, so make the owned copy here.
+        SmallStr new_name_small{new_name.data(), new_name.data() + new_name.size()};
 
         // Map edges
         for (auto &e_idx : new_edge_list) {
             e_idx = e_other_to_this_idx[e_idx.value];
         }
 
-        // Init. new_name is still a std::string, so make the owned copy here.
-        SmallStr new_name_small{new_name.data(), new_name.data() + new_name.size()};
-        Helper::init_vert(this, this_idx, NetlistVertexKind{kind}, std::move(new_name_small),
-                          std::move(new_val), std::move(new_edge_list));
+        // Map value, and create
+        switch (kind) {
+            using enum NetlistVertexKind;
+#define VERT_KIND(NAME, UNION_FIELD)                                                               \
+    case NAME: {                                                                                   \
+        auto new_val = *other_vert.get_data_if<NAME>();                                            \
+        mappings->map_v_value(NAME, &(new_val));                                                   \
+        Helper::init_vert<NAME>(this, this_idx, std::move(new_val), std::move(new_name_small),     \
+                                std::move(new_edge_list));                                         \
+        break;                                                                                     \
+    }
+            VERT_KINDS
+#undef VERT_KIND
+
+        default:
+            IRL_ASSERT(false, "didn't handle: {}", static_cast<uint16_t>(kind));
+            break;
+        }
     }
 
     return {{v_new_idxs_begin}, {static_cast<netlistIdx_t>(this->mVertices.size)}};
@@ -576,7 +613,7 @@ void Netlist::remove(NetlistVertexIdx idx) {
     IRL_ASSERT(mVertexNames.contains(k), "Deleted vert not in namemap");
     mVertexNames.erase(k);
 
-#define FIELD(T, N) std::destroy_at(mVertices.N + idx.value);
+#define FIELD(T, N) destroy_vertex(mVertices, idx.value, &detail::NetlistVertexFields::N);
     VERTEX_FIELDS
 #undef FIELD
 

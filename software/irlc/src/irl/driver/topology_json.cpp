@@ -9,6 +9,7 @@
 #include <string_view>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 #include "irl/command.hpp"
 #include "irl/compiler/parse_info.hpp"
@@ -99,6 +100,14 @@ VertKindInfo<Kind>::AssociatedData vertDataImpl(nlohmann::json const &j) {
                     .daughter_id = NO_DAUGHTERBOARD,
                 },
         };
+    } else if constexpr (std::is_same_v<Data, CapArray>) {
+        std::vector<decltype(CapArray::capacitances)::type> caps;
+        for (auto const &cap : j.at("caps")) {
+            SpstId spst = vertDataImpl<NetlistVertexKind::TOPO_SPST>(cap);
+            double capacitance = vertDataImpl<NetlistVertexKind::C>(cap);
+            caps.push_back({spst, capacitance});
+        }
+        return CapArray{.capacitances = {caps.begin(), caps.end()}};
     } else {
         static_assert(always_false<Data>, "Unsupported edge payload type");
     }

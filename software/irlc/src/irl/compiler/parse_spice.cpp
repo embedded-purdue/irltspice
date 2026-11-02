@@ -428,7 +428,7 @@ ParseResult SpiceParser::try_parse(std::string_view file_contents,
                                    std::string_view file_name) const {
 
     vector<ParseError> errors;
-    unique_ptr<Netlist> netlist(new Netlist);
+    Netlist netlist;
 
     Tokenizer tokenizer(file_contents);
 
@@ -506,7 +506,7 @@ ParseResult SpiceParser::try_parse(std::string_view file_contents,
             }
         } else {
             size_t error_len = errors.size();
-            add_element(*netlist, errors, models, line, file_name);
+            add_element(netlist, errors, models, line, file_name);
             if (mOpts.should_verbose_parse) {
                 if (error_len == errors.size()) {
                     mOpts.log_fd << " Added!\n";
@@ -522,7 +522,7 @@ ParseResult SpiceParser::try_parse(std::string_view file_contents,
     }
 
     if (mOpts.should_verbose_parse)
-        debug_print_netlist(mOpts.log_fd, *netlist);
+        debug_print_netlist(mOpts.log_fd, netlist);
 
     return ParseResult{
         .netlist{std::move(netlist)},
