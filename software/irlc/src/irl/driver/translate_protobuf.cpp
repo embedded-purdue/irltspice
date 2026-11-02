@@ -96,9 +96,10 @@ void initProgramSwitches(ProgramSwitchPB *out, ProgramPhysicalSwitches const &ps
 }
 
 void initProgramResistor(ProgramResistorPB *out, ProgramResistor const &pr) {
+    SET_FIELD(*out, ic_id, pr.resistor_id.ic_id);
     SET_FIELD(*out, resistor_id, pr.resistor_id.r_id);
-    IRL_ASSERT(false, "TODO: Quantize resistance!");
-    SET_FIELD(*out, resistance, *reinterpret_cast<uint32_t const *>(&pr.resistance));
+    // TODO: Quantize the resistance for the target IC's resolution
+    SET_FIELD(*out, resistance, static_cast<uint32_t>(pr.resistance));
 }
 
 void initStopProgrammingCmd(MotherCommandPB *out) { (void)GET_MUTABLE(*out, stop); }
@@ -168,22 +169,21 @@ class DaughterMappings final : public Netlist::CopyMappings {
     }
 };
 
+// Find the first port of `kind` in `board_span` that has at least one pin on
+// the requested `side`. Returns a null index if there is none.
 static NetlistVertexIdx
-locate_port(Netlist const &netlist, irl::NetlistVertexKind kind,
-            irl::NetlistEdgeKind child_or_parent,
+locate_port(irl::NetlistVertexKind kind, irl::NetlistEdgeKind side,
             std::pair<Netlist::VertexIter, Netlist::VertexIter> board_span) {
     for (auto i = board_span.first; i != board_span.second; i++) {
         NetlistVertex v = *i;
-        if (v.kind() == NetlistVertexKind::PORT_MM) {
-
-            bool has_right_kind =
-                std::ranges::find_if(v.connections(), [&](NetlistEdgeIdx const &e_i) {
-                    return (*v.netlist())[e_i].kind() == child_or_parent;
-                }) == v.connections().end();
-
-            if (has_right_kind) {
-                return v.idx();
-            }
+        if (v.kind() != kind) {
+            continue;
+        }
+        bool has_side = std::ranges::any_of(v.connections(), [&](NetlistEdgeIdx const &e_i) {
+            return (*v.netlist())[e_i].kind() == side;
+        });
+        if (has_side) {
+            return v.idx();
         }
     }
     return {}; // null
@@ -211,25 +211,21 @@ IrlTopology TopoUnpacker::unpackTopology(TopologyResponsePB const &topo, LazyTop
                             .grandmother_id = NO_MOTHERBOARD,
                             .childmother_id = 0,
                         });
-    // Make a mock span
-    const BoardSpan mock_root_span{
-        .boardId = {},
-        .span = {0, 1},
-    };
-    std::pair<Netlist::VertexIter, Netlist::VertexIter> prev_mother_span = {
-        {out.mNetlist, 0},
-        {out.mNetlist, 1},
-    };
+    // Filled in after each motherboard is copied; only read for m_i > 0.
+    std::pair<Netlist::VertexIter, Netlist::VertexIter> prev_mother_span;
 
     for (MotherId_t m_i = 0; m_i < nMothers; m_i++) {
 
         // Step 1:
-        // Locate the MM port on the previous motherboard
-        NetlistVertexIdx parent_mm =
-            locate_port(out.mNetlist, NetlistVertexKind::PORT_MM,
-                        NetlistEdgeKind::PIN_PORT_MM_PARENT, prev_mother_span);
-        IRL_ASSERT(!parent_mm.is_null(), "Motherboard topology {} has no parent MM ports.",
-                   m_i - 1);
+        // Locate the parent-side MM port on the previous motherboard. The root
+        // port stands in as the grandmother for the very first motherboard.
+        NetlistVertexIdx parent_mm = root_node;
+        if (m_i != 0) {
+            parent_mm = locate_port(NetlistVertexKind::PORT_MM, NetlistEdgeKind::PIN_PORT_MM_PARENT,
+                                    prev_mother_span);
+            IRL_ASSERT(!parent_mm.is_null(), "Motherboard topology {} has no parent MM ports.",
+                       m_i - 1);
+        }
 
         // Step 2:
         // Get the template
@@ -244,8 +240,8 @@ IrlTopology TopoUnpacker::unpackTopology(TopologyResponsePB const &topo, LazyTop
         // Locate the MM port on the template
         Netlist const &motherTemplateNl = boardTemplate.netlist;
         NetlistVertexIdx child_mm =
-            locate_port(out.mNetlist, NetlistVertexKind::PORT_MM,
-                        NetlistEdgeKind::PIN_PORT_MM_CHILD, boardTemplate.netlist.vertices());
+            locate_port(NetlistVertexKind::PORT_MM, NetlistEdgeKind::PIN_PORT_MM_CHILD,
+                        boardTemplate.netlist.vertices());
         IRL_ASSERT(!child_mm.is_null(), "Motherboard topology {} has no child MM ports.", m_i);
 
         // Step 4:
@@ -267,18 +263,29 @@ IrlTopology TopoUnpacker::unpackTopology(TopologyResponsePB const &topo, LazyTop
         for (auto port : pair_to_iter(prev_mother_span)) {
             if (port.kind() == NetlistVertexKind::PORT_MD) {
                 // Found an md port on mother
-                // 5.a: Assert that the mother is the parent of this MD port
-                IRL_ASSERT(out.mNetlist[port.connections()[0]].kind() ==
-                               NetlistEdgeKind::PIN_PORT_MD_PARENT,
+                // 5.a: Assert that every pin on the mother side is a parent pin
+                IRL_ASSERT(!port.connections().empty(), "MD port on mother {} has no pins.", m_i);
+                IRL_ASSERT(std::ranges::all_of(port.connections(),
+                                               [&](NetlistEdgeIdx e) {
+                                                   return out.mNetlist[e].kind() ==
+                                                          NetlistEdgeKind::PIN_PORT_MD_PARENT;
+                                               }),
                            "Non-parent MD port found on mother: {}", m_i);
 
                 auto const d_i = port.get_data_if<NetlistVertexKind::PORT_MD>()->daughter_id;
+                IRL_ASSERT(d_i < std::size(mtopo.daughterboards), "Daughter slot {} out of range.",
+                           d_i);
+
+                auto const &dtopo = mtopo.daughterboards[d_i];
+
+                // An empty slot still has an MD port on the template; there is
+                // simply nothing to stitch into it.
+                if (dtopo.kind == DaughterboardKind::NOT_PRESENT) {
+                    continue;
+                }
 
                 // 5.b: find a template for that daughter and locate the child MD port on the
                 // template
-                auto const &dtopo =
-                    mtopo.daughterboards[port.get_data_if<NetlistVertexKind::PORT_MD>()
-                                             ->daughter_id];
                 std::optional d_template_o = db.get_template_for_board(BoardGUID::from(dtopo));
                 IRL_ASSERT(d_template_o.has_value(),
                            "Received topology for daughter: {} & uniqueid: {} not in db",
@@ -288,10 +295,10 @@ IrlTopology TopoUnpacker::unpackTopology(TopologyResponsePB const &topo, LazyTop
                 Netlist const &daughterTemplateNl = daughterboardTemplate.netlist;
 
                 NetlistVertexIdx daughter_md =
-                    locate_port(daughterTemplateNl, NetlistVertexKind::PORT_MD,
-                                NetlistEdgeKind::PIN_PORT_MD_CHILD, daughterTemplateNl.vertices());
-                IRL_ASSERT(!child_mm.is_null(), "Daughterboard topology {} has no child MD ports.",
-                           d_i);
+                    locate_port(NetlistVertexKind::PORT_MD, NetlistEdgeKind::PIN_PORT_MD_CHILD,
+                                daughterTemplateNl.vertices());
+                IRL_ASSERT(!daughter_md.is_null(),
+                           "Daughterboard topology {} has no child MD ports.", d_i);
 
                 DaughterMappings dms(m_i, d_i);
                 // 5.c: Copy and stitch this

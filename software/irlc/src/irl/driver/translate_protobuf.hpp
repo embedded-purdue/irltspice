@@ -36,6 +36,9 @@ void initStopProgrammingCmd(MotherCommand *out);
 void initTopoRequestCmd(MotherCommand *out);
 
 class TopoUnpacker {
+  public:
+    // Build a stitched netlist out of a topology response and a database of
+    // board templates. Exposed so callers (and tests) can drive it directly.
     static IrlTopology unpackTopology(TopologyResponsePB const &topo, LazyTopologyDB const &db,
                                       size_t sequence_no);
 };
