@@ -126,7 +126,7 @@ set(PROTOS
 # (and, for a STATIC library, into the archive)
 
 # --- irlcore : shared netlist representation, commands, and misc datastructures ---
-add_library(irlcore OBJECT
+add_library(irlcore STATIC
     ${IRLC_DIR}/src/irl/core/netlist.cpp
     ${IRLC_DIR}/src/irl/core/debug.cpp
 )
@@ -137,7 +137,7 @@ target_include_directories(irlcore
 target_link_libraries(irlcore PRIVATE fast_float)
 
 # --- irlcompiler : stateless parsing/verification/routing. Depends on netlist. ---
-add_library(irlcompiler OBJECT
+add_library(irlcompiler STATIC
     ${IRLC_DIR}/src/irl/compiler.cpp
     ${IRLC_DIR}/src/irl/compiler/parse_spice.cpp
     ${IRLC_DIR}/src/irl/compiler/parse_eeschema.cpp
@@ -146,7 +146,8 @@ target_include_directories(irlcompiler
     PUBLIC  ${IRLC_DIR}/include
     PRIVATE ${IRLC_DIR}/src
 )
-target_link_libraries(irlcompiler PUBLIC irlcore fast_float)
+target_link_libraries(irlcompiler PRIVATE fast_float)
+target_link_libraries(irlcompiler PUBLIC irlcore)
 
 # --- irlproto : generated protobuf wire code, shared by the driver and tests ---
 make_directory(${GEN_PROTOBUF_SRC_DIR})
@@ -162,7 +163,7 @@ target_include_directories(irlproto PUBLIC ${GEN_PROTOBUF_SRC_DIR})
 target_link_libraries(irlproto PUBLIC protobuf::libprotobuf)
 
 # --- irldriver : board communication + oscilloscope. Depends on netlist. ---
-add_library(irldriver OBJECT
+add_library(irldriver STATIC
     ${IRLC_DIR}/src/irl/driver.cpp
     ${IRLC_DIR}/src/irl/driver/translate_protobuf.cpp
     ${IRLC_DIR}/src/irl/driver/topology_json.cpp
@@ -172,23 +173,22 @@ target_include_directories(irldriver
     PUBLIC ${IRLC_DIR}/include
     PRIVATE ${IRLC_DIR}/src
 )
-target_link_libraries(irldriver PUBLIC irlcore irlproto)
-target_link_libraries(irldriver PRIVATE nlohmann_json::nlohmann_json serialib)
+target_link_libraries(irldriver PUBLIC irlcore)
+target_link_libraries(irldriver PRIVATE irlproto nlohmann_json::nlohmann_json serialib)
 
-# --- libirlc.a : the single artifact end users link. ---
-add_library(irlc STATIC)
-target_include_directories(irlc PUBLIC ${IRLC_DIR}/include)
-target_link_libraries(irlc PRIVATE irlcore irlcompiler irldriver)
-# Static archives do not carry their dependencies, so re-expose the external
-# ones the packed objects need.
-target_link_libraries(irlc PUBLIC irlproto Boost::asio Boost::outcome fast_float)
+# --- irlc : the single artifact end users link. ---
+#  Technically it's just an alias to link everything, so we specify it as an interface target
+add_library(irlc INTERFACE)
+target_link_libraries(irlc INTERFACE irlcore irlcompiler irldriver)
 
 # Legacy single-binary CLI. `src/main.cpp` still pulls in the old `src/core`
 # compiler and does not build against the split yet. Re-enable once the
 # compiler/driver implementations land.
-add_executable(test-xbar)
-target_sources(test-xbar PRIVATE ${IRLC_DIR}/src/test_xbar.cpp)
-target_link_libraries(test-xbar PRIVATE irlc)
+
+# ========
+# Examples
+# ========
+add_subdirectory(examples)
 
 # =======
 # Testing
