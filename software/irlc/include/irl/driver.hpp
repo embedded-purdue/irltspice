@@ -1,9 +1,14 @@
 #pragma once
 
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
+#include <memory>
 #include <string>
 #include <string_view>
+#include <type_traits>
+#include <unordered_map>
 #include <variant>
 
 #include <irl/command.hpp>
@@ -18,7 +23,9 @@ enum class CommandErrorCode {
     DISCONNECTED,
     STALE_TOPOLOGY,
     PORT_CLOSED,
-    TIMEOUT_HIT,
+    TIMEOUT_RX,
+    TIMEOUT_TX,
+    TX_FAILED,
     CHECKSUM_ERROR,
     OTHER_SYSTEM,
 };
@@ -28,6 +35,10 @@ struct CommandError {
     std::string msg;
     CommandErrorCode code;
 };
+inline std::ostream &operator<<(std::ostream &os, const CommandError &err) {
+    os << "AHHH";
+    return os;
+}
 
 // The result of sending a command to the tspice
 // Either an error or the response
@@ -47,25 +58,35 @@ template <typename Data> class CommandResult {
     bool isError() const { return std::holds_alternative<CommandError>(mInfo); }
 
     // gets the data, null if an error, and points to this object
-    Data const *getData() const { return std::get_if<Data>(mInfo); };
+    Data const *getData() const { return std::get_if<Data>(&mInfo); };
     // gets the error, null if valid data, and points to this object
-    CommandError const *getErr() const { return std::get_if<CommandError>(mInfo); };
+    CommandError const *getErr() const { return std::get_if<CommandError>(&mInfo); };
 };
 
 // Command was issued successfully and no response is expected
 struct NoResponseExpected {};
 
+class IoThread;
+
 // The class used for interfacing with the tspice
+// The software follows a single-producer single-consumer architecture
+// Each connected board gets its own IoThread object, and each IoThread is associated with exactly
+// one IrlDriver. The IoThread's lifetime is not necessarily tied to the driver's lifetime, an
+// IoThread may spontaneously fall back into an uninitialized state if its port closes, for example.
 class IrlDriver {
 
     struct CmdCollection {
-        void (*nextCmd)();
-        bool (*cmdsDone)();
-        ProgrammingCommand const &(*currentCmd)();
+        std::function<void()> nextCmd;
+        std::function<bool()> cmdsDone;
+        std::function<ProgrammingCommand const &()> currentCmd;
     };
     CommandResult<NoResponseExpected> doProgrammingInner(IrlTopology const *topo,
                                                          CmdCollection const &cmds);
-    serialib *mSerial;
+
+    // An IoThread object is owned by the driver and contains all code needed for synchronization
+    // Non-nullable, but thread->alive may become false at any time
+    // We're doing a pimpl basically here, but trust it's so much nicer
+    std::unique_ptr<IoThread> mIoThread;
 
   public:
     // Create a driver and bind it to a serial port.
@@ -73,6 +94,7 @@ class IrlDriver {
     // (sending/receiving from the scope).
     // If this fails, connected() will return false.
     IrlDriver(std::string_view serial_port);
+    ~IrlDriver();
 
     // Is the driver connected to the serial port?
     // If false, all future commands will return DISCONNECTED
@@ -103,20 +125,23 @@ class IrlDriver {
                                                     T const &command_collection) {
         auto current = command_collection.begin();
         auto end = command_collection.end();
-        using IterT = decltype(current);
         CmdCollection cmds;
-        cmds.nextCmd = [&current]() { (*static_cast<IterT *>(current))++; };
-        cmds.cmdsDone = [&current, &end]() {
-            return (*static_cast<IterT *>(current)) == (*static_cast<IterT *>(end));
+        cmds.nextCmd = [&current]() { current++; };
+        cmds.cmdsDone = [&current, &end]() { return current == end; };
+        cmds.currentCmd = [&current]() {
+            if constexpr (std::is_same_v<decltype(*current), ProgrammingCommand>) {
+                return *current;
+            } else {
+                return ProgrammingCommand(*current);
+            }
         };
-        cmds.currentCmd = [&current]() { return *(*static_cast<IterT *>(current)); };
         return doProgrammingInner(topo, cmds);
     }
 
-    // ADVANCED USE ONLY. Prefer doProgramming
-    // Resets the tspice and places it into programming mode.
-    // Requires a non-stale topology to ensure no mistakes are made.
-    CommandResult<NoResponseExpected> beginProgramming(IrlTopology const *topo);
+    // // ADVANCED USE ONLY. Prefer doProgramming
+    // // Resets the tspice and places it into programming mode.
+    // // Requires a non-stale topology to ensure no mistakes are made.
+    // CommandResult<NoResponseExpected> beginProgramming(IrlTopology const *topo);
 
     // ADVANCED USE ONLY. Prefer doProgramming
     // End programming. Places the tspice in "active" mode.

@@ -3,6 +3,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <span>
 #include <string_view>
 
 #include <irl/driver.hpp>
@@ -49,5 +50,37 @@ int main(int argc, const char **argv) {
     };
 
     IrlDriver driver{argv[1]};
-    driver.testSendProg();
+
+    bool retry = false;
+    bool good = false;
+    do {
+        auto topo_r = driver.queryTopology();
+        if (topo_r.isError()) {
+            std::cout << "Failed to get topo: " << *(topo_r.getErr());
+        }
+        auto topo = topo_r.getData();
+
+        auto prog_r = driver.doProgramming(topo, std::span{&pxb, 1});
+        if (prog_r.isError()) {
+            switch (prog_r.getErr()->code) {
+            case CommandErrorCode::STALE_TOPOLOGY:
+                std::cout << "Topo changed. Retrying.\n";
+                retry = true;
+                break;
+            default:
+                std::cout << "Failed to program: " << *topo_r.getErr();
+                break;
+            }
+        } else {
+            good = true;
+        }
+    } while (!retry);
+
+    if (good) {
+        std::cout << "Successfully programmed!\n";
+        return 0;
+    } else {
+        std::cout << "Failed to program.";
+        return -1;
+    }
 }

@@ -58,6 +58,7 @@ template <typename T> class OwnedSpan {
         other.mData = nullptr;
         other.mSize = 0;
     }
+    OwnedSpan(T *data, size_t size) noexcept : mData(data), mSize(size) {}
 
     OwnedSpan &operator=(OwnedSpan &&other) noexcept {
         if (this == &other) {

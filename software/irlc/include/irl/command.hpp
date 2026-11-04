@@ -126,7 +126,8 @@ struct BoardSpan {
 
 namespace driver {
 class TopoUnpacker;
-}
+class IrlDriver;
+} // namespace driver
 
 // The topology of a connected board.
 // Required to perform any programming commands to enforce that the user knows
@@ -155,7 +156,7 @@ class IrlTopology {
     size_t mTopoSequenceNumber;
 
     // IrlDriver has to be able to check topoSequenceNumber
-    friend class IrlDriver;
+    friend class driver::IrlDriver;
     friend class driver::TopoUnpacker;
 
   public:

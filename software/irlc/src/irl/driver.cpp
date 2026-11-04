@@ -7,11 +7,14 @@
 #include <irl/driver.hpp>
 
 #include "irl/detail/util.hpp"
+#include "irl/driver/io_thread.hpp"
 #include "irl/driver/translate_protobuf.hpp"
 #include "irl/netlist.hpp"
 #include "serialib.h"
 
 namespace irl::driver {
+
+using namespace std::chrono_literals;
 
 // CRF = Command Result Factory
 class CRF {
@@ -23,90 +26,78 @@ class CRF {
                          .code = CommandErrorCode::STALE_TOPOLOGY});
     }
 
+    template <typename T> static CommandResult<T> timeout_tx() {
+        return CommandResult<T>(
+            CommandError{.msg = "Timeout has been hit while trying to send command.",
+                         .code = CommandErrorCode::TIMEOUT_TX});
+    }
+
+    template <typename T> static CommandResult<T> port_closed() {
+        return CommandResult<T>(CommandError{.msg = "Port discovered to be closed.",
+                                             .code = CommandErrorCode::PORT_CLOSED});
+    }
+
+    template <typename T> static CommandResult<T> tx_failed() {
+        return CommandResult<T>(
+            CommandError{.msg = "Transmission failed.", .code = CommandErrorCode::TX_FAILED});
+    }
+
+    template <typename T> static CommandResult<T> ok(T &&t) { return {std::move(t)}; }
+
     static CommandResult<NoResponseExpected> good() { return CommandResult(NoResponseExpected{}); }
 };
 
-// TODO:
-// FIX TF OUTTA THIS
-#define START_BYTE 0xAB
-#define HEADER_LEN_BYTES 5
-#define CRC_LEN_BYTES 2
-static void frame_header(uint8_t **b, size_t payload_len) {
-    auto begin = *b;
-    *((*b)++) = START_BYTE;
-    *((*b)++) = (payload_len & 0xFF00) >> 8;
-    *((*b)++) = payload_len & 0xFF;
-    *((*b)++) = (payload_len & 0xFF00) >> 8;
-    *((*b)++) = payload_len & 0xFF;
-    auto diff = *b - begin;
-    IRL_ASSERT(diff == HEADER_LEN_BYTES, "Bad amt written");
-}
-
-static void frame_crc(uint8_t **b, uint16_t crc) {
-    // crc - not yet implemented
-    auto begin = *b;
-    *((*b)++) = (crc & 0xFF00) >> 8;
-    *((*b)++) = crc & 0xFF;
-    auto diff = *b - begin;
-    IRL_ASSERT(diff == CRC_LEN_BYTES, "Bad amt written");
-}
-
-struct BufferSized {
-    std::unique_ptr<uint8_t[]> data;
-    size_t len;
-};
-
-static BufferSized serialize_and_frame(::google::protobuf::Message const *msg) {
-    size_t payload_size = msg->ByteSizeLong();
-    size_t msg_size = HEADER_LEN_BYTES + payload_size + CRC_LEN_BYTES;
-
-    auto data = std::make_unique<uint8_t[]>(msg_size);
-    uint8_t *data_iter = data.get();
-    frame_header(&data_iter, payload_size);
-    bool good = msg->SerializeToArray(data_iter, msg_size);
-    IRL_ASSERT(good, "Failed to serialize");
-    frame_crc(&data_iter, 0);
-    return {
-        .data = std::move(data),
-        .len = msg_size,
-    };
-}
-
-static bool open_good_settings(serialib *serial, std::string_view serial_port) {
-    std::string str{serial_port};
-    serial->openDevice(str.c_str(), 115200);
-    return serial->isDeviceOpen();
-}
-
 IrlDriver::IrlDriver(std::string_view serial_port) {
-    mSerial = new serialib;
-    open_good_settings(mSerial, serial_port);
-    IRL_ASSERT(mSerial->isDeviceOpen(), "Failed to open: {}", serial_port);
+    mIoThread = std::make_unique<IoThread>();
+    reconnect(serial_port);
 }
 
-bool IrlDriver::connected() { return mSerial->isDeviceOpen(); }
+bool IrlDriver::connected() { return mIoThread->get_connected(); }
 
-void IrlDriver::disconnect() { mSerial->closeDevice(); }
+void IrlDriver::disconnect() {
+    auto seq = mIoThread->send_disconnect();
+    auto opt = mIoThread->await_cmd(seq, 100ms);
+    IRL_ASSERT(opt && *opt == OK, "Failed to disconnect!");
+}
 
 bool IrlDriver::reconnect(std::string_view serial_port) {
-    if (connected()) {
-        disconnect();
-    }
-    open_good_settings(mSerial, serial_port);
-    IRL_ASSERT(mSerial->isDeviceOpen(), "Failed to open: {}", serial_port);
+    auto seq = mIoThread->send_connect(serial_port);
+    auto opt = mIoThread->await_cmd(seq, 100ms);
+    return opt && *opt == OK;
 }
 
 CommandResult<NoResponseExpected> IrlDriver::resetTspice() {
-    // MotherCommandPB reset;
-    // reset.mutable_
-    // serialize_and_frame(ProgrammingCommandPB{})
-    assert(0 && "irl::IrlDriver::resetTspice is not implemented yet");
-    std::abort();
+    MotherCommandPB reset;
+    reset.mutable_reset();
+    auto seq = mIoThread->send_cmd(std::move(reset));
+    auto opt = mIoThread->await_cmd(seq, 100ms);
+    if (!opt) {
+        return CRF::timeout_tx<NoResponseExpected>();
+    }
+    DriverCode code = *opt;
+    switch (code) {
+    case OK:
+        break;
+    case SERIAL_CLOSED:
+        return CRF::port_closed<NoResponseExpected>();
+        break;
+    case WRITE_FAILED:
+        return CRF::tx_failed<NoResponseExpected>();
+        break;
+    case FAILED_TO_SERIALIZE:
+        IRL_ASSERT(false, "Failed to serialize the message");
+        break;
+    case DEVICE_NOT_FOUND:
+    default:
+        IRL_ASSERT(false, "Unreachable code: {} received.", (int)code);
+        break;
+    }
+    return CRF::ok(NoResponseExpected{});
 }
+
 bool IrlDriver::topologyValid(IrlTopology const *topo) {
-    // TODO:
-    // Check against internal state
-    return true;
+    size_t seq = mIoThread->get_topo_sequence_no();
+    return topo->mTopoSequenceNumber == seq;
 }
 
 CommandResult<NoResponseExpected> IrlDriver::doProgrammingInner(IrlTopology const *topo,
@@ -115,7 +106,7 @@ CommandResult<NoResponseExpected> IrlDriver::doProgrammingInner(IrlTopology cons
         return CRF::staleTopo<NoResponseExpected>();
     }
 
-    auto r = beginProgramming(topo);
+    auto r = resetTspice();
     if (r.isError()) {
         return r;
     }
@@ -127,16 +118,20 @@ CommandResult<NoResponseExpected> IrlDriver::doProgrammingInner(IrlTopology cons
     assert(0 && "irl::IrlDriver::resetTspice is not implemented yet");
 }
 
-CommandResult<NoResponseExpected> IrlDriver::beginProgramming(IrlTopology const *topo) {
-    (void)topo;
-    assert(0 && "irl::IrlDriver::beginProgramming is not implemented yet");
-    std::abort();
-}
+// CommandResult<NoResponseExpected> IrlDriver::beginProgramming(IrlTopology const *topo) {
+//     (void)topo;
+//     assert(0 && "irl::IrlDriver::beginProgramming is not implemented yet");
+//     std::abort();
+// }
 
 CommandResult<uint32_t> IrlDriver::endProgramming(IrlTopology const *topo) {
-    (void)topo;
-    assert(0 && "irl::IrlDriver::endProgramming is not implemented yet");
-    std::abort();
+    MotherCommandPB reset;
+    reset.mutable_stop();
+    auto seq = mIoThread->send_cmd(std::move(reset));
+    auto opt = mIoThread->await_cmd(seq, 100ms);
+    if (!opt) {
+        return CRF::timeout_tx<uint32_t>();
+    }
 }
 
 CommandResult<NoResponseExpected> IrlDriver::sendProgrammingCommand(IrlTopology const *topo,
@@ -152,33 +147,6 @@ CommandResult<IrlTopology> IrlDriver::queryTopology() {
     std::abort();
 }
 
-CommandResult<NoResponseExpected> IrlDriver::testSendProg() {
-    ProgrammingCommand pcmd;
-    pcmd.cmd = ProgramXbar{
-        .xbarId =
-            {
-                .ic_id = 0,
-                .board_id =
-                    {
-                        .mother_id = 0,
-                        .daughter_id = NO_DAUGHTERBOARD,
-                    },
-            },
-        .row = 2,
-        .col = 1,
-        .connect = true,
-    };
-
-    MotherCommandPB mcmd;
-    initProgrammingCmd(&mcmd, pcmd);
-
-    auto data = serialize_and_frame(&mcmd);
-
-    uint32_t nwrit;
-    int good = mSerial->writeBytes(data.data.get(), data.len, &nwrit);
-    IRL_ASSERT(good == 1, "Bad response: {}", good);
-    IRL_ASSERT(nwrit == data.len, "Bad len written: {}", nwrit);
-    return CRF::good();
-}
+IrlDriver::~IrlDriver() = default;
 
 } // namespace irl::driver
