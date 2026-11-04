@@ -1,19 +1,49 @@
 #include "common/framing.h"
-#include "pb.h"
 
 #include <assert.h>
 #include <stddef.h>
 
 #ifndef __cplusplus
+#include "pb.h"
 #include <pb_decode.h>
 #include <pb_encode.h>
+#endif
+
+// ================================================================
+// Buffer abstraction
+// ================================================================
+//
+// The firmware path operates directly on a RingBuffer, which is DMA friendly
+// and allocation free. The host-side driver defines FRAMING_USE_VECTOR and
+// operates on a std::vector<uint8_t> instead. Pushes append to the back; the
+// parser walks the buffer forward with its own read cursor and never erases
+// mid-frame (see frame_parser_mark_data_used).
+
+#ifdef FRAMING_USE_VECTOR
+
+static inline void _frame_buf_push(FrameBuffer *buf, uint8_t data) { buf->push_back(data); }
+
+static inline bool _frame_buf_empty(const FrameParser *fp) {
+    return fp->state.read_pos >= fp->rb->size();
+}
+
+static inline uint8_t _frame_buf_pop(FrameParser *fp) { return (*fp->rb)[fp->state.read_pos++]; }
+
+#else
+
+static inline void _frame_buf_push(FrameBuffer *buf, uint8_t data) { ring_buffer_push(buf, data); }
+
+static inline bool _frame_buf_empty(const FrameParser *fp) { return ring_buffer_empty(fp->rb); }
+
+static inline uint8_t _frame_buf_pop(FrameParser *fp) { return ring_buffer_pop(fp->rb); }
+
 #endif
 
 // ================================================================
 // Parsing Logic
 // ================================================================
 
-void frame_parser_init(FrameParser *fp, RingBuffer *rb) {
+void frame_parser_init(FrameParser *fp, FrameBuffer *rb) {
     assert(fp != NULL);
     assert(rb != NULL);
 
@@ -27,6 +57,9 @@ void frame_parser_init(FrameParser *fp, RingBuffer *rb) {
         .data_valid = false,
         .data_start = NULL,
     };
+#ifdef FRAMING_USE_VECTOR
+    fp->state.read_pos = 0;
+#endif
 }
 
 static void _process_byte(FrameParser *fp, uint8_t data) {
@@ -62,7 +95,11 @@ static void _process_byte(FrameParser *fp, uint8_t data) {
             }
             fp->state.phase = RECEIVING_DATA;
             fp->state.cnt = fp->state.length;
+#ifdef FRAMING_USE_VECTOR
+            fp->state.data_start = fp->rb->data() + fp->state.read_pos;
+#else
             fp->state.data_start = (uint8_t *)fp->rb->head;
+#endif
         }
         break;
 
@@ -101,8 +138,8 @@ bool frame_parser_parse(FrameParser *fp) {
         return true;
     }
 
-    while (!ring_buffer_empty(fp->rb)) {
-        uint8_t data = ring_buffer_pop(fp->rb);
+    while (!_frame_buf_empty(fp)) {
+        uint8_t data = _frame_buf_pop(fp);
 
         _process_byte(fp, data);
 
@@ -118,24 +155,24 @@ bool frame_parser_parse(FrameParser *fp) {
 // Framing Logic
 // ================================================================
 
-static void _frame_header(RingBuffer *rb, size_t len) {
-    ring_buffer_push(rb, START_BYTE);
-    ring_buffer_push(rb, (len & 0xFF00) >> 8);
-    ring_buffer_push(rb, len & 0xFF);
-    ring_buffer_push(rb, (len & 0xFF00) >> 8);
-    ring_buffer_push(rb, len & 0xFF);
+static void _frame_header(FrameBuffer *rb, size_t len) {
+    _frame_buf_push(rb, START_BYTE);
+    _frame_buf_push(rb, (len & 0xFF00) >> 8);
+    _frame_buf_push(rb, len & 0xFF);
+    _frame_buf_push(rb, (len & 0xFF00) >> 8);
+    _frame_buf_push(rb, len & 0xFF);
 }
 
-static void _frame_crc(RingBuffer *rb, uint16_t crc) {
+static void _frame_crc(FrameBuffer *rb, uint16_t crc) {
     // crc - not yet implemented
-    ring_buffer_push(rb, (crc & 0xFF00) >> 8);
-    ring_buffer_push(rb, crc & 0xFF);
+    _frame_buf_push(rb, (crc & 0xFF00) >> 8);
+    _frame_buf_push(rb, crc & 0xFF);
 }
 
-void frame_payload(RingBuffer *rb, const uint8_t *buf, size_t len) {
+void frame_payload(FrameBuffer *rb, const uint8_t *buf, size_t len) {
     _frame_header(rb, len);
     for (size_t i = 0; i < len; i++) {
-        ring_buffer_push(rb, buf[i]);
+        _frame_buf_push(rb, buf[i]);
     }
     _frame_crc(rb, 0);
 }
