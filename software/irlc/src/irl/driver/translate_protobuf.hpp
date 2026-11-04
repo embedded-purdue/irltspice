@@ -1,3 +1,5 @@
+#pragma once
+
 #include <cstddef>
 #include <cstdint>
 
@@ -24,6 +26,7 @@ using ProgramResistorPB = ::ProgramResistor;
 using MotherboardTopologyPB = ::MotherboardTopology;
 using DaughterboardTopologyPB = ::DaughterboardTopology;
 using TopologyResponsePB = ::TopologyResponse;
+using CommandResponsePB = ::MotherResponse;
 
 // Translate a programming command to protobuf.
 // Only meaningful for the following command types (which have a direct protobuf analog):
