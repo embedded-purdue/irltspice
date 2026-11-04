@@ -1,18 +1,33 @@
 #ifndef __COMMON_FRAMING_H__
 #define __COMMON_FRAMING_H__
 
-#include "common/ring_buffer.h"
+#include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
+
+// Tools for parsing our framing format for all internode comms
+//
+// The firmware runs on a RingBuffer (DMA friendly, fixed size, allocation
+// free); the host-side driver has no such constraint and just wants a growable
+// byte queue. Define FRAMING_USE_VECTOR when building the driver to swap the
+// RingBuffer for a std::vector<uint8_t>. The rest of the API is unchanged.
+
+#ifdef FRAMING_USE_VECTOR
+#include <cstddef>
+#include <vector>
+typedef std::vector<uint8_t> FrameBuffer;
+#else
+#include "common/ring_buffer.h"
+typedef RingBuffer FrameBuffer;
+#endif
 
 #ifndef __cplusplus
 #include <pb_common.h>
 #endif
 
 #ifdef __cplusplus
-#extern "C" {
+extern "C" {
 #endif
-
-// Tools for parsing our framing format for all internode comms
 
 // FRAMING FORMAT
 // - Start byte (0xAB)
@@ -39,14 +54,19 @@ typedef struct {
     uint16_t crc;
     bool data_valid;
     uint8_t *data_start;
+#ifdef FRAMING_USE_VECTOR
+    // A std::vector has no head pointer, so the parser owns the read cursor
+    // into the caller's buffer. It is the index of the next unparsed byte.
+    size_t read_pos;
+#endif
 } FrameParseState;
 
 typedef struct {
-    RingBuffer *rb;
+    FrameBuffer *rb;
     FrameParseState state;
 } FrameParser;
 
-void frame_parser_init(FrameParser *fp, RingBuffer *rb);
+void frame_parser_init(FrameParser *fp, FrameBuffer *rb);
 
 // Parses all data in ring buffer
 // Returns true early if a packet is parsed
@@ -56,16 +76,25 @@ static inline uint8_t *frame_parser_get_data_start(FrameParser *fp) { return fp-
 
 static inline uint16_t frame_parser_get_data_length(FrameParser *fp) { return fp->state.length; }
 
-static inline void frame_parser_mark_data_used(FrameParser *fp) { fp->state.data_valid = false; }
+static inline void frame_parser_mark_data_used(FrameParser *fp) {
+    fp->state.data_valid = false;
+#ifdef FRAMING_USE_VECTOR
+    // The caller is done with the payload: drop every byte consumed so far and
+    // rewind the cursor. Any bytes past the frame are preserved.
+    fp->rb->erase(fp->rb->begin(), fp->rb->begin() + fp->state.read_pos);
+    fp->state.read_pos = 0;
+    fp->state.data_start = NULL;
+#endif
+}
 
 // Nanopb (c) specific functions
 #ifndef __cplusplus
 bool frame_parser_parse_for_proto(FrameParser *fp, const pb_msgdesc_t *fields, void *proto_struct);
 
-uint16_t frame_proto(RingBuffer *rb, const pb_msgdesc_t *fields, const void *proto_struct);
+uint16_t frame_proto(FrameBuffer *rb, const pb_msgdesc_t *fields, const void *proto_struct);
 #endif
 
-void frame_payload(RingBuffer *rb, const uint8_t *buf, size_t len);
+void frame_payload(FrameBuffer *rb, const uint8_t *buf, size_t len);
 
 #ifdef __cplusplus
 }
