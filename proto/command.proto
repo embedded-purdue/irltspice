@@ -102,6 +102,9 @@ message ProgrammingCommand {
 message StopProgramming {
 }
 
+message Reset {
+}
+
 message StopProgrammingResponse {
     uint32 complete_count = 1;
 }
@@ -112,6 +115,7 @@ message DaughterCommand {
         TopologyRequest topo = 1;
         ProgrammingPayload prog = 2;
         StopProgramming stop = 3;
+        Reset reset = 4;
     }
 }
 
@@ -129,6 +133,7 @@ message MotherCommand {
         TopologyRequest topo = 1;  
         ProgrammingCommand prog = 2;
         StopProgramming stop = 3;
+        Reset reset = 4;
     }
 }
 
