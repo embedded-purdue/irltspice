@@ -6934,6 +6934,16 @@
 		)
 		(uuid "18057012-da88-4117-aeb9-19f0cd887fc9")
 	)
+	(text "Status LEDs"
+		(exclude_from_sim no)
+		(at 121.412 167.894 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+		(uuid "acf1be6d-b95b-4bcc-92c2-a91316e74989")
+	)
 	(junction
 		(at 193.04 22.86)
 		(diameter 0)

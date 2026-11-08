@@ -3949,6 +3949,16 @@
 	)
 	(wire
 		(pts
+			(xy 157.48 52.07) (xy 158.75 52.07)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "13ef4525-114f-4f1e-9221-5cd970bf4352")
+	)
+	(wire
+		(pts
 			(xy 71.12 168.91) (xy 71.12 171.45)
 		)
 		(stroke
@@ -3976,6 +3986,16 @@
 			(type default)
 		)
 		(uuid "1b77070d-07a3-4724-b433-ed60507b3ad9")
+	)
+	(wire
+		(pts
+			(xy 100.33 52.07) (xy 101.6 52.07)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "1d96c9f5-a8d1-40c2-8a6d-d19a75d6e167")
 	)
 	(wire
 		(pts
@@ -4086,6 +4106,16 @@
 			(type default)
 		)
 		(uuid "3fa2f149-4af2-4fbf-82b6-411337c45051")
+	)
+	(wire
+		(pts
+			(xy 100.33 54.61) (xy 101.6 54.61)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "4232fdac-8312-43dc-946f-f41e296c1a08")
 	)
 	(wire
 		(pts
@@ -4379,6 +4409,16 @@
 	)
 	(wire
 		(pts
+			(xy 100.33 35.56) (xy 101.6 35.56)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "82f0f6cd-875a-4ff6-a8dd-df39942a9ba8")
+	)
+	(wire
+		(pts
 			(xy 214.63 57.15) (xy 214.63 58.42)
 		)
 		(stroke
@@ -4456,6 +4496,16 @@
 			(type default)
 		)
 		(uuid "9af9b999-766f-4b82-a0ff-85271fc81ad5")
+	)
+	(wire
+		(pts
+			(xy 157.48 54.61) (xy 158.75 54.61)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "9e0191a1-6e15-42f2-aae6-bf2c1d3cb437")
 	)
 	(wire
 		(pts
@@ -4539,6 +4589,26 @@
 	)
 	(wire
 		(pts
+			(xy 157.48 38.1) (xy 158.75 38.1)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "adcf9f1c-69a9-486b-a119-0ee1bb019b6d")
+	)
+	(wire
+		(pts
+			(xy 100.33 38.1) (xy 101.6 38.1)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "b220e64f-2d31-4cef-92b0-12884e45a704")
+	)
+	(wire
+		(pts
 			(xy 194.31 129.54) (xy 195.58 129.54)
 		)
 		(stroke
@@ -4576,6 +4646,16 @@
 			(type default)
 		)
 		(uuid "beae9bd3-d334-4ca4-a5db-bb3b63cfe456")
+	)
+	(wire
+		(pts
+			(xy 157.48 35.56) (xy 158.75 35.56)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "bf558686-9bad-44c3-90b2-ef5d7d7beec1")
 	)
 	(wire
 		(pts
@@ -4837,6 +4917,16 @@
 		)
 		(uuid "055bb79f-3811-4e0a-8fd5-0faef16d465a")
 	)
+	(label "GPIO3"
+		(at 158.75 52.07 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "07ee018d-c571-4d99-8162-d654b68e9181")
+	)
 	(label "STD2_IO0"
 		(at 100.33 57.15 180)
 		(effects
@@ -4887,6 +4977,16 @@
 		)
 		(uuid "1d05afa0-427f-49f6-ab08-e64f0b5e8883")
 	)
+	(label "DR0"
+		(at 100.33 35.56 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "1dd05f20-e42f-4405-a7bf-c66d43ac1c5c")
+	)
 	(label "ADCOut3"
 		(at 210.82 132.08 0)
 		(effects
@@ -4906,6 +5006,16 @@
 			(justify right)
 		)
 		(uuid "24a18381-ce63-4a6c-a973-9ddb95f13d3f")
+	)
+	(label "DR1"
+		(at 158.75 35.56 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "26e72eaf-381c-4161-b40b-7e128f212d30")
 	)
 	(label "STD0_IO2"
 		(at 64.77 25.4 0)
@@ -4977,6 +5087,16 @@
 		)
 		(uuid "3b84513b-bc8f-480f-80ba-c5a5c759f5cf")
 	)
+	(label "GPIO1"
+		(at 158.75 38.1 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "404fb164-c419-48fc-bf04-eb743d7a5e05")
+	)
 	(label "WaveOut1"
 		(at 34.29 34.29 180)
 		(effects
@@ -5027,6 +5147,16 @@
 		)
 		(uuid "5f1f9bba-bffb-4b24-8b77-28065d633c93")
 	)
+	(label "DR3"
+		(at 158.75 54.61 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "64edf067-aa4c-4fed-ad99-84c1aa3f88a3")
+	)
 	(label "WaveOut1"
 		(at 55.88 151.13 180)
 		(effects
@@ -5046,6 +5176,16 @@
 			(justify right)
 		)
 		(uuid "7004d4f3-ae4d-44ec-bbe0-b2899c76131c")
+	)
+	(label "DR2"
+		(at 100.33 54.61 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "717a66c6-b6b0-43f8-8a15-5e45199b1ad5")
 	)
 	(label "STD1_IO3"
 		(at 64.77 40.64 0)
@@ -5287,6 +5427,16 @@
 		)
 		(uuid "cdba21cf-d336-4ac3-a3fe-8d52e13ee8af")
 	)
+	(label "GPIO0"
+		(at 100.33 38.1 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "d4548da3-e402-4398-ae1c-56985e9d09fc")
+	)
 	(label "STD3_IO3"
 		(at 158.75 68.58 0)
 		(effects
@@ -5316,6 +5466,16 @@
 			(justify left)
 		)
 		(uuid "d794ae43-9277-4e7f-92a6-e3cbab1c1884")
+	)
+	(label "GPIO2"
+		(at 100.33 52.07 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "e1279839-9330-42c9-9bf8-5de61f3c1a2a")
 	)
 	(label "STD1_IO2"
 		(at 64.77 38.1 0)
@@ -8698,8 +8858,8 @@
 		)
 	)
 	(sheet
-		(at 125.73 88.9)
-		(size 41.91 68.58)
+		(at 140.97 88.9)
+		(size 31.75 95.25)
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
@@ -8714,7 +8874,7 @@
 		)
 		(uuid "72af25e1-7cdc-412a-8304-78174a178e92")
 		(property "Sheetname" "MicroController"
-			(at 125.73 88.1884 0)
+			(at 140.97 88.1884 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8723,7 +8883,7 @@
 			)
 		)
 		(property "Sheetfile" "stm_controls.kicad_sch"
-			(at 125.73 158.0646 0)
+			(at 140.97 184.7346 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8773,7 +8933,7 @@
 				(justify left top)
 			)
 		)
-		(pin "STD0_AIO0" bidirectional
+		(pin "STD0_IO0" bidirectional
 			(at 101.6 21.59 180)
 			(uuid "946d7eed-48c7-41bf-8a5a-57ff8e33a09b")
 			(effects
@@ -8783,7 +8943,7 @@
 				(justify left)
 			)
 		)
-		(pin "STD0_AIO1" bidirectional
+		(pin "STD0_IO1" bidirectional
 			(at 101.6 25.4 180)
 			(uuid "fadb0f45-03da-46ef-aac4-8f94740895ed")
 			(effects
@@ -8793,7 +8953,7 @@
 				(justify left)
 			)
 		)
-		(pin "STD0_AIO2" bidirectional
+		(pin "STD0_IO2" bidirectional
 			(at 101.6 29.21 180)
 			(uuid "578afbea-ac29-40b6-816e-6079a2bf538c")
 			(effects
@@ -8803,7 +8963,7 @@
 				(justify left)
 			)
 		)
-		(pin "STD0_AIO3" bidirectional
+		(pin "STD0_IO3" bidirectional
 			(at 101.6 33.02 180)
 			(uuid "4c68140f-ba3f-4fcc-b818-912ef6ed5a18")
 			(effects
@@ -8813,7 +8973,7 @@
 				(justify left)
 			)
 		)
-		(pin "STD1_AIO0" bidirectional
+		(pin "STD1_IO0" bidirectional
 			(at 157.48 21.59 0)
 			(uuid "7d871103-ef96-480c-b5c3-809d0cabe08a")
 			(effects
@@ -8823,7 +8983,7 @@
 				(justify right)
 			)
 		)
-		(pin "STD1_AIO1" bidirectional
+		(pin "STD1_IO1" bidirectional
 			(at 157.48 25.4 0)
 			(uuid "a0363739-f573-4bd0-acd2-c209277fdb31")
 			(effects
@@ -8833,7 +8993,7 @@
 				(justify right)
 			)
 		)
-		(pin "STD3_AIO3" bidirectional
+		(pin "STD3_IO3" bidirectional
 			(at 157.48 68.58 0)
 			(uuid "2e38331b-d165-4f3e-a8a0-10bf1e7379a0")
 			(effects
@@ -8843,7 +9003,7 @@
 				(justify right)
 			)
 		)
-		(pin "STD3_AIO1" bidirectional
+		(pin "STD3_IO1" bidirectional
 			(at 157.48 60.96 0)
 			(uuid "63398a85-3744-4781-9566-2c3d8cb0c310")
 			(effects
@@ -8853,7 +9013,7 @@
 				(justify right)
 			)
 		)
-		(pin "STD3_AIO2" bidirectional
+		(pin "STD3_IO2" bidirectional
 			(at 157.48 64.77 0)
 			(uuid "6579d3ed-ae0a-4ff7-b791-1de7e68bcb6d")
 			(effects
@@ -8863,7 +9023,7 @@
 				(justify right)
 			)
 		)
-		(pin "STD3_AIO0" bidirectional
+		(pin "STD3_IO0" bidirectional
 			(at 157.48 57.15 0)
 			(uuid "93a5ce19-aff5-46b6-be23-5b177113fbc3")
 			(effects
@@ -8873,7 +9033,7 @@
 				(justify right)
 			)
 		)
-		(pin "STD1_AIO3" bidirectional
+		(pin "STD1_IO3" bidirectional
 			(at 157.48 33.02 0)
 			(uuid "67a5e08d-c0ed-4a3b-9676-ec4a348b25fa")
 			(effects
@@ -8883,7 +9043,7 @@
 				(justify right)
 			)
 		)
-		(pin "STD1_AIO2" bidirectional
+		(pin "STD1_IO2" bidirectional
 			(at 157.48 29.21 0)
 			(uuid "9af99d76-a42e-489e-b659-5fd8b499b847")
 			(effects
@@ -8893,7 +9053,7 @@
 				(justify right)
 			)
 		)
-		(pin "STD2_AIO2" bidirectional
+		(pin "STD2_IO2" bidirectional
 			(at 101.6 64.77 180)
 			(uuid "28316add-9eee-4dba-b660-4fffe5f6de24")
 			(effects
@@ -8903,7 +9063,7 @@
 				(justify left)
 			)
 		)
-		(pin "STD2_AIO3" bidirectional
+		(pin "STD2_IO3" bidirectional
 			(at 101.6 68.58 180)
 			(uuid "647afedd-38d4-4cd3-bd21-85529bc0826b")
 			(effects
@@ -8913,7 +9073,7 @@
 				(justify left)
 			)
 		)
-		(pin "STD2_AIO1" bidirectional
+		(pin "STD2_IO1" bidirectional
 			(at 101.6 60.96 180)
 			(uuid "e07e8978-b023-4234-9ac7-9123bd40cfd4")
 			(effects
@@ -8923,7 +9083,7 @@
 				(justify left)
 			)
 		)
-		(pin "STD2_AIO0" bidirectional
+		(pin "STD2_IO0" bidirectional
 			(at 101.6 57.15 180)
 			(uuid "5adea882-f139-4efd-bcc8-b923810b1b35")
 			(effects
@@ -8931,6 +9091,206 @@
 					(size 1.27 1.27)
 				)
 				(justify left)
+			)
+		)
+		(pin "CLK" bidirectional
+			(at 124.46 19.05 90)
+			(uuid "f54c3ff7-4fe5-4ec0-94c0-829176136390")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "DATAREADY0" bidirectional
+			(at 101.6 35.56 180)
+			(uuid "10572dd0-860e-493b-a9e5-2bfc931c2e90")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "DATAREADY1" bidirectional
+			(at 157.48 35.56 0)
+			(uuid "287c7b05-c476-4ad7-8255-9156128984f1")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "DATAREADY2" bidirectional
+			(at 101.6 54.61 180)
+			(uuid "8480c0bb-4426-437f-bed0-ef5dcaac2137")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "DATAREADY3" bidirectional
+			(at 157.48 54.61 0)
+			(uuid "689c857e-1039-44c4-937a-7fbbed2336ea")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "GPIO0" bidirectional
+			(at 101.6 38.1 180)
+			(uuid "442c4f60-e988-425e-bdbd-57219ae9f271")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "GPIO1" bidirectional
+			(at 157.48 38.1 0)
+			(uuid "8884324e-306e-4a34-942b-21c4311e032d")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "GPIO2" bidirectional
+			(at 101.6 52.07 180)
+			(uuid "07dab315-2370-4a18-98fc-7cd8329bf52c")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "GPIO3" bidirectional
+			(at 157.48 52.07 0)
+			(uuid "826109a8-eff1-437a-ab82-04beae2327bd")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "MISO" bidirectional
+			(at 127 19.05 90)
+			(uuid "30a73091-eb5f-449a-b347-016cc1f13846")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "MOSI" bidirectional
+			(at 129.54 19.05 90)
+			(uuid "1971b4f2-93ba-4d2c-b959-704c5e1f32e7")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "nCS0" bidirectional
+			(at 101.6 40.64 180)
+			(uuid "ab701d24-5193-4064-b6a2-47676f01e4fb")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "nCS1" bidirectional
+			(at 157.48 40.64 0)
+			(uuid "2293ddcf-7774-4049-8668-72d006672367")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "nCS2" bidirectional
+			(at 101.6 49.53 180)
+			(uuid "68e49ff1-6533-4df8-b626-700644689f40")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "nCS3" bidirectional
+			(at 157.48 49.53 0)
+			(uuid "76e682fd-4927-48d0-afd2-097350341869")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "RST" bidirectional
+			(at 132.08 19.05 90)
+			(uuid "18150243-c97e-40e8-97f9-57b853ab1c7b")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "STS0" bidirectional
+			(at 101.6 43.18 180)
+			(uuid "ef59ba94-58eb-475e-8308-76153f14b31a")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "STS1" bidirectional
+			(at 157.48 43.18 0)
+			(uuid "61ac0510-d311-4906-99fc-746712b8f520")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "STS2" bidirectional
+			(at 101.6 46.99 180)
+			(uuid "4ecc4986-a6dc-4997-8be7-73aa1e4b6597")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "STS3" bidirectional
+			(at 157.48 46.99 0)
+			(uuid "ec98581f-9712-4528-92aa-fc636925ecbc")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
 			)
 		)
 		(instances
