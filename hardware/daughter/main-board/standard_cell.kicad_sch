@@ -7773,7 +7773,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "C"
+		(property "Value" "100nF"
 			(at 317.5 27.9399 0)
 			(effects
 				(font
@@ -7782,7 +7782,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric_Pad1.08x0.95mm_HandSolder"
 			(at 314.6552 30.48 0)
 			(effects
 				(font
@@ -7842,7 +7842,7 @@
 				)
 			)
 		)
-		(property "Value" "C"
+		(property "Value" "10nF"
 			(at 201.93 52.07 90)
 			(effects
 				(font
@@ -7850,7 +7850,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric_Pad1.08x0.95mm_HandSolder"
 			(at 205.74 56.1848 0)
 			(effects
 				(font
@@ -7976,7 +7976,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "C"
+		(property "Value" "100nF"
 			(at 254 29.2099 0)
 			(effects
 				(font
@@ -7985,7 +7985,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric_Pad1.08x0.95mm_HandSolder"
 			(at 251.1552 31.75 0)
 			(effects
 				(font
@@ -8046,7 +8046,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "C"
+		(property "Value" "100nF"
 			(at 254 74.9299 0)
 			(effects
 				(font
@@ -8055,7 +8055,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric_Pad1.08x0.95mm_HandSolder"
 			(at 251.1552 77.47 0)
 			(effects
 				(font
@@ -8180,7 +8180,7 @@
 				)
 			)
 		)
-		(property "Value" "C"
+		(property "Value" "10nF"
 			(at 180.34 39.37 90)
 			(effects
 				(font
@@ -8188,7 +8188,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric_Pad1.08x0.95mm_HandSolder"
 			(at 184.15 43.4848 0)
 			(effects
 				(font
@@ -8248,7 +8248,7 @@
 				)
 			)
 		)
-		(property "Value" "C"
+		(property "Value" "100nF"
 			(at 201.93 39.37 90)
 			(effects
 				(font
@@ -8256,7 +8256,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric_Pad1.08x0.95mm_HandSolder"
 			(at 205.74 43.4848 0)
 			(effects
 				(font
@@ -8316,7 +8316,7 @@
 				)
 			)
 		)
-		(property "Value" "C"
+		(property "Value" "400nF"
 			(at 193.04 27.94 90)
 			(effects
 				(font
@@ -8324,7 +8324,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric_Pad1.08x0.95mm_HandSolder"
 			(at 196.85 32.0548 0)
 			(effects
 				(font
@@ -8393,7 +8393,7 @@
 				(justify right)
 			)
 		)
-		(property "Footprint" "AD5263BRUZ200:SOP65P640X120-24N"
+		(property "Footprint" "SeniorDesignFP:SOP65P640X120-24N"
 			(at 337.82 206.756 0)
 			(effects
 				(font
@@ -8579,7 +8579,7 @@
 				(justify right)
 			)
 		)
-		(property "Footprint" "AD5263BRUZ200:SOP65P640X120-24N"
+		(property "Footprint" "SeniorDesignFP:SOP65P640X120-24N"
 			(at 406.4 238.506 0)
 			(effects
 				(font
@@ -8756,7 +8756,7 @@
 				)
 			)
 		)
-		(property "Value" "C"
+		(property "Value" "800nF"
 			(at 213.36 27.94 90)
 			(effects
 				(font
@@ -8764,7 +8764,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric_Pad1.08x0.95mm_HandSolder"
 			(at 217.17 32.0548 0)
 			(effects
 				(font
@@ -8832,7 +8832,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_SO:SOIC-8-1EP_3.9x4.9mm_P1.27mm_EP2.29x3mm"
 			(at 273.05 30.48 0)
 			(effects
 				(font
@@ -8984,7 +8984,7 @@
 				(justify right)
 			)
 		)
-		(property "Footprint" "AD5263BRUZ200:SOP65P640X120-24N"
+		(property "Footprint" "SeniorDesignFP:SOP65P640X120-24N"
 			(at 402.59 205.486 0)
 			(effects
 				(font
@@ -9170,7 +9170,7 @@
 				(justify right)
 			)
 		)
-		(property "Footprint" "AD5263BRUZ200:SOP65P640X120-24N"
+		(property "Footprint" "SeniorDesignFP:SOP65P640X120-24N"
 			(at 435.61 176.276 0)
 			(effects
 				(font
@@ -9347,7 +9347,7 @@
 				)
 			)
 		)
-		(property "Value" "C"
+		(property "Value" "100nF"
 			(at 220.98 53.34 90)
 			(effects
 				(font
@@ -9355,7 +9355,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric_Pad1.08x0.95mm_HandSolder"
 			(at 224.79 57.4548 0)
 			(effects
 				(font
@@ -9423,7 +9423,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_SO:SOIC-8-1EP_3.9x4.9mm_P1.27mm_EP2.29x3mm"
 			(at 336.55 64.77 0)
 			(effects
 				(font
@@ -9633,7 +9633,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "C"
+		(property "Value" "100nF"
 			(at 317.5 38.0999 0)
 			(effects
 				(font
@@ -9642,7 +9642,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric_Pad1.08x0.95mm_HandSolder"
 			(at 314.6552 40.64 0)
 			(effects
 				(font
@@ -9711,7 +9711,7 @@
 				(justify right)
 			)
 		)
-		(property "Footprint" "AD5263BRUZ200:SOP65P640X120-24N"
+		(property "Footprint" "SeniorDesignFP:SOP65P640X120-24N"
 			(at 336.55 237.236 0)
 			(effects
 				(font
@@ -9896,7 +9896,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_SO:HTSSOP-24-1EP_4.4x7.8mm_P0.65mm_EP3.2x5mm"
 			(at 26.67 172.72 0)
 			(effects
 				(font
@@ -10304,7 +10304,7 @@
 				)
 			)
 		)
-		(property "Value" "C"
+		(property "Value" "100nF"
 			(at 151.13 16.51 90)
 			(effects
 				(font
@@ -10312,7 +10312,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric_Pad1.08x0.95mm_HandSolder"
 			(at 154.94 20.6248 0)
 			(effects
 				(font
@@ -10381,7 +10381,7 @@
 				(justify right)
 			)
 		)
-		(property "Footprint" "AD5263BRUZ200:SOP65P640X120-24N"
+		(property "Footprint" "SeniorDesignFP:SOP65P640X120-24N"
 			(at 368.3 206.756 0)
 			(effects
 				(font
@@ -10558,7 +10558,7 @@
 				)
 			)
 		)
-		(property "Value" "C"
+		(property "Value" "400nF"
 			(at 193.04 16.51 90)
 			(effects
 				(font
@@ -10566,7 +10566,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric_Pad1.08x0.95mm_HandSolder"
 			(at 196.85 20.6248 0)
 			(effects
 				(font
@@ -10626,7 +10626,7 @@
 				)
 			)
 		)
-		(property "Value" "C"
+		(property "Value" "800nF"
 			(at 213.36 16.51 90)
 			(effects
 				(font
@@ -10634,7 +10634,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric_Pad1.08x0.95mm_HandSolder"
 			(at 217.17 20.6248 0)
 			(effects
 				(font
@@ -10702,7 +10702,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_SO:HTSSOP-24-1EP_4.4x7.8mm_P0.65mm_EP3.2x5mm"
 			(at 26.67 143.51 0)
 			(effects
 				(font
@@ -10828,7 +10828,7 @@
 				)
 			)
 		)
-		(property "Value" "C"
+		(property "Value" "200nF"
 			(at 172.72 27.94 90)
 			(effects
 				(font
@@ -10836,7 +10836,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric_Pad1.08x0.95mm_HandSolder"
 			(at 176.53 32.0548 0)
 			(effects
 				(font
@@ -10896,7 +10896,7 @@
 				)
 			)
 		)
-		(property "Value" "C"
+		(property "Value" "200nF"
 			(at 172.72 16.51 90)
 			(effects
 				(font
@@ -10904,7 +10904,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric_Pad1.08x0.95mm_HandSolder"
 			(at 176.53 20.6248 0)
 			(effects
 				(font
@@ -10964,7 +10964,7 @@
 				)
 			)
 		)
-		(property "Value" "C"
+		(property "Value" "1uF"
 			(at 220.98 39.37 90)
 			(effects
 				(font
@@ -10972,7 +10972,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric_Pad1.08x0.95mm_HandSolder"
 			(at 224.79 43.4848 0)
 			(effects
 				(font
@@ -11041,7 +11041,7 @@
 				(justify right)
 			)
 		)
-		(property "Footprint" "AD5263BRUZ200:SOP65P640X120-24N"
+		(property "Footprint" "SeniorDesignFP:SOP65P640X120-24N"
 			(at 435.61 208.026 0)
 			(effects
 				(font
@@ -11442,7 +11442,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_SO:HTSSOP-24-1EP_4.4x7.8mm_P0.65mm_EP3.2x5mm"
 			(at 54.61 172.72 0)
 			(effects
 				(font
@@ -11569,7 +11569,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "C"
+		(property "Value" "100nF"
 			(at 254 64.7699 0)
 			(effects
 				(font
@@ -11578,7 +11578,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric_Pad1.08x0.95mm_HandSolder"
 			(at 251.1552 67.31 0)
 			(effects
 				(font
@@ -11647,7 +11647,7 @@
 				(justify right)
 			)
 		)
-		(property "Footprint" "AD5263BRUZ200:SOP65P640X120-24N"
+		(property "Footprint" "SeniorDesignFP:SOP65P640X120-24N"
 			(at 402.59 175.006 0)
 			(effects
 				(font
@@ -11824,7 +11824,7 @@
 				)
 			)
 		)
-		(property "Value" "C"
+		(property "Value" "1uF"
 			(at 180.34 64.77 90)
 			(effects
 				(font
@@ -11832,7 +11832,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric_Pad1.08x0.95mm_HandSolder"
 			(at 184.15 68.8848 0)
 			(effects
 				(font
@@ -12118,7 +12118,7 @@
 				(justify right)
 			)
 		)
-		(property "Footprint" "AD5263BRUZ200:SOP65P640X120-24N"
+		(property "Footprint" "SeniorDesignFP:SOP65P640X120-24N"
 			(at 337.82 176.276 0)
 			(effects
 				(font
@@ -12521,7 +12521,7 @@
 				(justify right)
 			)
 		)
-		(property "Footprint" "AD5263BRUZ200:SOP65P640X120-24N"
+		(property "Footprint" "SeniorDesignFP:SOP65P640X120-24N"
 			(at 369.57 238.506 0)
 			(effects
 				(font
@@ -12706,7 +12706,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_SO:HTSSOP-24-1EP_4.4x7.8mm_P0.65mm_EP3.2x5mm"
 			(at 54.61 143.51 0)
 			(effects
 				(font
@@ -12833,7 +12833,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "C"
+		(property "Value" "100nF"
 			(at 317.5 73.6599 0)
 			(effects
 				(font
@@ -12842,7 +12842,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric_Pad1.08x0.95mm_HandSolder"
 			(at 314.6552 76.2 0)
 			(effects
 				(font
@@ -12967,7 +12967,7 @@
 				)
 			)
 		)
-		(property "Value" "C"
+		(property "Value" "100nF"
 			(at 151.13 27.94 90)
 			(effects
 				(font
@@ -12975,7 +12975,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric_Pad1.08x0.95mm_HandSolder"
 			(at 154.94 32.0548 0)
 			(effects
 				(font
@@ -13101,7 +13101,7 @@
 				)
 			)
 		)
-		(property "Value" "C"
+		(property "Value" "10uF"
 			(at 201.93 64.77 90)
 			(effects
 				(font
@@ -13109,7 +13109,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric_Pad1.18x1.45mm_HandSolder"
 			(at 205.74 68.8848 0)
 			(effects
 				(font
@@ -13243,7 +13243,7 @@
 				(justify right)
 			)
 		)
-		(property "Footprint" "AD5263BRUZ200:SOP65P640X120-24N"
+		(property "Footprint" "SeniorDesignFP:SOP65P640X120-24N"
 			(at 436.88 238.506 0)
 			(effects
 				(font
@@ -13428,7 +13428,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_SO:SOIC-8-1EP_3.9x4.9mm_P1.27mm_EP2.29x3mm"
 			(at 336.55 30.48 0)
 			(effects
 				(font
@@ -13580,7 +13580,7 @@
 				(justify right)
 			)
 		)
-		(property "Footprint" "AD5263BRUZ200:SOP65P640X120-24N"
+		(property "Footprint" "SeniorDesignFP:SOP65P640X120-24N"
 			(at 368.3 176.276 0)
 			(effects
 				(font
@@ -13823,7 +13823,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "C"
+		(property "Value" "100nF"
 			(at 317.5 63.4999 0)
 			(effects
 				(font
@@ -13832,7 +13832,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric_Pad1.08x0.95mm_HandSolder"
 			(at 314.6552 66.04 0)
 			(effects
 				(font
@@ -13900,7 +13900,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_SO:HTSSOP-24-1EP_4.4x7.8mm_P0.65mm_EP3.2x5mm"
 			(at 148.59 46.99 0)
 			(effects
 				(font
@@ -14100,7 +14100,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_SO:SOIC-8-1EP_3.9x4.9mm_P1.27mm_EP2.29x3mm"
 			(at 273.05 64.77 0)
 			(effects
 				(font
@@ -14178,7 +14178,7 @@
 				)
 			)
 		)
-		(property "Value" "C"
+		(property "Value" "10uF"
 			(at 180.34 52.07 90)
 			(effects
 				(font
@@ -14186,7 +14186,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric_Pad1.18x1.45mm_HandSolder"
 			(at 184.15 56.1848 0)
 			(effects
 				(font
@@ -14247,7 +14247,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "C"
+		(property "Value" "100nF"
 			(at 254 39.3699 0)
 			(effects
 				(font
@@ -14256,7 +14256,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric_Pad1.08x0.95mm_HandSolder"
 			(at 251.1552 41.91 0)
 			(effects
 				(font
