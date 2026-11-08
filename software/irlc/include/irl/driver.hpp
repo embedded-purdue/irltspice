@@ -4,14 +4,17 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <iterator>
 #include <memory>
 #include <string>
 #include <string_view>
 #include <type_traits>
 #include <unordered_map>
+#include <utility>
 #include <variant>
 
 #include <irl/command.hpp>
+#include <irl/detail/virt_iter.hpp>
 #include <irl/netlist.hpp>
 
 class serialib;
@@ -75,18 +78,14 @@ class IoThread;
 // IoThread may spontaneously fall back into an uninitialized state if its port closes, for example.
 class IrlDriver {
 
-    struct CmdCollection {
-        std::function<void()> nextCmd;
-        std::function<bool()> cmdsDone;
-        std::function<ProgrammingCommand const &()> currentCmd;
-    };
-    CommandResult<NoResponseExpected> doProgrammingInner(IrlTopology const *topo,
-                                                         CmdCollection const &cmds);
-
     // An IoThread object is owned by the driver and contains all code needed for synchronization
     // Non-nullable, but thread->alive may become false at any time
     // We're doing a pimpl basically here, but trust it's so much nicer
     std::unique_ptr<IoThread> mIoThread;
+
+    using CmdIter = detail::VirtInputIter<ProgrammingCommand>;
+    CommandResult<NoResponseExpected> doProgrammingInner(IrlTopology const *topo, CmdIter &cmd_i,
+                                                         CmdIter const &cmd_i_end);
 
   public:
     // Create a driver and bind it to a serial port.
@@ -94,6 +93,8 @@ class IrlDriver {
     // (sending/receiving from the scope).
     // If this fails, connected() will return false.
     IrlDriver(std::string_view serial_port);
+
+    // Destructor. Must be in other TU because of the whole IoThread thing.
     ~IrlDriver();
 
     // Is the driver connected to the serial port?
@@ -101,7 +102,6 @@ class IrlDriver {
     bool connected();
 
     // Disconnects from the current serial port.
-    // Implicitly called by destructor.
     void disconnect();
 
     // Attempts to reconnect to a serial port.
@@ -120,22 +120,16 @@ class IrlDriver {
     // Will automatically batch ProgramLogicalSwitch commands
     // command_collection must have begin() and end() which produces iterators
     //   of ilr::ProgrammingCommands
-    template <typename T>
+    template <detail::Iterable T>
     CommandResult<NoResponseExpected> doProgramming(IrlTopology const *topo,
                                                     T const &command_collection) {
-        auto current = command_collection.begin();
-        auto end = command_collection.end();
-        CmdCollection cmds;
-        cmds.nextCmd = [&current]() { current++; };
-        cmds.cmdsDone = [&current, &end]() { return current == end; };
-        cmds.currentCmd = [&current]() {
-            if constexpr (std::is_same_v<decltype(*current), ProgrammingCommand>) {
-                return *current;
-            } else {
-                return ProgrammingCommand(*current);
-            }
-        };
-        return doProgrammingInner(topo, cmds);
+
+        using Iter = detail::ConcreteInputIter<detail::IterT<T>, ProgrammingCommand>;
+
+        Iter i{command_collection.begin()};
+        Iter const i_end{command_collection.end()};
+
+        return doProgrammingInner(topo, i, i_end);
     }
 
     // // ADVANCED USE ONLY. Prefer doProgramming
@@ -158,8 +152,6 @@ class IrlDriver {
                                                              ProgrammingCommand const *cmd);
     // Get the topology of the connected tspice
     CommandResult<IrlTopology> queryTopology();
-
-    CommandResult<NoResponseExpected> testSendProg();
 };
 
 } // namespace irl::driver

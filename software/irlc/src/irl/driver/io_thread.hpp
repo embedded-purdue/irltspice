@@ -10,9 +10,11 @@
 #include <string_view>
 #include <thread>
 #include <variant>
+#include <vector>
 
 #include "irl/command.hpp"
 #include "irl/detail/util.hpp"
+#include "irl/driver/framing.h"
 #include "irl/driver/spsc_queue.hpp"
 #include "irl/driver/translate_protobuf.hpp"
 #include "serialib.h"
@@ -77,6 +79,9 @@ class IoThreadWorker {
     std::shared_ptr<IoThreadShared> mCtx;
     std::weak_ptr<IoThreadShared> mCtx_w;
     serialib mSerial;
+    // Bytes pulled off the wire, plus the framing parser that consumes them.
+    std::vector<uint8_t> mRxBuffer;
+    FrameParser mFrameParser;
 
     IoThreadWorker(std::weak_ptr<IoThreadShared> ctx);
 
@@ -93,6 +98,11 @@ class IoThreadWorker {
     DriverCode run_cmd(DriverCmd::ConectSerial const &connect);
 
     DriverCode serialize_and_send(::google::protobuf::Message const *msg);
+
+    // Drain the serial receive buffer and hand every complete frame to main.
+    void poll_serial();
+    // Decode the frame currently held by mFrameParser and queue it up.
+    void process_frame();
 
     bool is_connected();
     void disconnect();
@@ -154,7 +164,7 @@ class IoThread {
 
     inline std::optional<DriverCode> await_cmd(size_t cmd_no, std::chrono::milliseconds ms) {
         auto start = std::chrono::steady_clock::now();
-        auto resp = mCtx->driverResponsesToMain.try_pop();
+        std::unique_ptr<DriverCmdResult> resp = nullptr;
         auto now = std::chrono::steady_clock::now();
         while (now - start < ms && !(resp && resp->cmd_no < cmd_no)) {
             resp = mCtx->driverResponsesToMain.try_pop();
@@ -168,9 +178,12 @@ class IoThread {
     }
 
     ~IoThread() {
-        // Not needed but good to be explicit
-        // Will cause the thread to die eventually
+        // Dropping the shared state makes LOCK() fail so the worker returns.
+        // We must then join it: ~std::thread on a joinable thread terminates.
         mCtx.reset();
+        if (mThread.joinable()) {
+            mThread.join();
+        }
     }
 };
 

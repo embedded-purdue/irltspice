@@ -7,11 +7,9 @@
 #include <thread>
 #include <variant>
 
-#include "irl/owned_span.hpp"
-
 namespace irl::driver {
 
-void wakeup_thread_main(std::weak_ptr<std::atomic<size_t>> waker) {
+static void wakeup_thread_main(std::weak_ptr<std::atomic<size_t>> waker) {
     while (true) {
         std::this_thread::sleep_for(std::chrono::milliseconds(POLL_INCOMING_MS));
         auto locked = waker.lock();
@@ -38,6 +36,7 @@ void wakeup_thread_main(std::weak_ptr<std::atomic<size_t>> waker) {
 
 IoThreadWorker::IoThreadWorker(std::weak_ptr<IoThreadShared> ctx)
     : mCtx(nullptr), mCtx_w(ctx), mSerial() {
+    frame_parser_init(&mFrameParser, &mRxBuffer);
     // Thread-ception.
     // Start a waker thread that will wake this thread so we can poll for serial every n ms
     LOCK();
@@ -52,7 +51,6 @@ extern void run_io_thread(std::weak_ptr<IoThreadShared> ctx) {
 }
 
 void IoThreadWorker::main() {
-    std::shared_ptr<IoThreadShared> mCtx;
     while (true) {
         // Look for incoming commands, eventually we'll get woken up but that's fine
         // If we have them, send them
@@ -63,11 +61,50 @@ void IoThreadWorker::main() {
             mCtx->driverResponsesToMain.push(
                 std::make_unique<DriverCmdResult>(cmd->cmd_no, result));
         }
+        // Now time to read. Pull whatever bytes have shown up and dispatch every
+        // complete frame to the main thread.
+        poll_serial();
         UNLOCK();
-        // Now time to read
-        // TODO:
-        // Parse frame, if it's a TopologyResponsePB queue it up in topologiesToMain else queue it
-        // up boardResponsesToMain
+    }
+}
+
+void IoThreadWorker::poll_serial() {
+    if (!is_connected()) {
+        return;
+    }
+
+    // serialib opens the port non-blocking, so a single-byte read returns 1 when
+    // a byte is pending and -2 (EAGAIN) once the OS buffer is empty. A 1 ms
+    // timeout only matters if read() reports EOF; the buffer is emptied without
+    // busy-spinning either way.
+    uint8_t byte = 0;
+    while (mSerial.readBytes(&byte, 1, 1) == 1) {
+        mRxBuffer.push_back(byte);
+    }
+
+    // frame_parser_parse() returns true as long as a complete frame is pending,
+    // so process_frame() must retire it before we can parse the next one.
+    while (frame_parser_parse(&mFrameParser)) {
+        process_frame();
+    }
+}
+
+void IoThreadWorker::process_frame() {
+    CommandResponsePB response;
+    bool ok = response.ParseFromArray(frame_parser_get_data_start(&mFrameParser),
+                                      frame_parser_get_data_length(&mFrameParser));
+    // Retire the frame regardless: a malformed payload should just be dropped.
+    frame_parser_mark_data_used(&mFrameParser);
+    if (!ok) {
+        return;
+    }
+
+    if (response.has_topo()) {
+        size_t seq = mCtx->aTopologySequenceNo.fetch_add(1, std::memory_order_relaxed) + 1;
+        mCtx->topologiesToMain.push(
+            std::make_unique<std::pair<TopologyResponsePB, size_t>>(response.topo(), seq));
+    } else {
+        mCtx->boardResponsesToMain.push(std::make_unique<CommandResponsePB>(std::move(response)));
     }
 }
 
@@ -105,60 +142,22 @@ DriverCode IoThreadWorker::run_cmd(DriverCmd::ConectSerial const &connect_cmd) {
 
 IoThreadWorker::~IoThreadWorker() { mSerial.closeDevice(); }
 
-// TODO:
-// FIX TF OUTTA THIS
-#define START_BYTE 0xAB
-#define HEADER_LEN_BYTES 5
-#define CRC_LEN_BYTES 2
-static void frame_header(uint8_t **b, size_t payload_len) {
-    auto begin = *b;
-    *((*b)++) = START_BYTE;
-    *((*b)++) = (payload_len & 0xFF00) >> 8;
-    *((*b)++) = payload_len & 0xFF;
-    *((*b)++) = (payload_len & 0xFF00) >> 8;
-    *((*b)++) = payload_len & 0xFF;
-    auto diff = *b - begin;
-    IRL_ASSERT(diff == HEADER_LEN_BYTES, "Bad amt written");
-}
-
-static void frame_crc(uint8_t **b, uint16_t crc) {
-    // crc - not yet implemented
-    auto begin = *b;
-    *((*b)++) = (crc & 0xFF00) >> 8;
-    *((*b)++) = crc & 0xFF;
-    auto diff = *b - begin;
-    IRL_ASSERT(diff == CRC_LEN_BYTES, "Bad amt written");
-}
-
-static OwnedSpan<uint8_t> serialize_and_frame(::google::protobuf::Message const *msg) {
-    size_t payload_size = msg->ByteSizeLong();
-    size_t msg_size = HEADER_LEN_BYTES + payload_size + CRC_LEN_BYTES;
-
-    auto data = new uint8_t[msg_size];
-    uint8_t *data_iter = data;
-    frame_header(&data_iter, payload_size);
-    bool good = msg->SerializeToArray(data_iter, msg_size);
-    if (!good) {
-        return OwnedSpan<uint8_t>(nullptr, 0);
-    }
-    frame_crc(&data_iter, 0);
-    return OwnedSpan(data, msg_size);
-}
-
 DriverCode IoThreadWorker::serialize_and_send(::google::protobuf::Message const *msg) {
-    OwnedSpan data = serialize_and_frame(msg);
-    if (data.data() == nullptr) {
-        return DriverCode::FAILED_TO_SERIALIZE;
-    }
-    if (!mSerial.isDeviceOpen()) {
+    if (!is_connected()) {
         return DriverCode::SERIAL_CLOSED;
     }
-    int ok = mSerial.writeBytes(data.data(), data.size());
-    if (ok == 1) {
-        return DriverCode::OK;
-    } else {
-        return DriverCode::WRITE_FAILED;
+
+    std::vector<uint8_t> payload(msg->ByteSizeLong());
+    if (!msg->SerializeToArray(payload.data(), static_cast<int>(payload.size()))) {
+        return DriverCode::FAILED_TO_SERIALIZE;
     }
+
+    // frame_payload() prepends the start/length header and appends the CRC.
+    std::vector<uint8_t> frame;
+    frame_payload(&frame, payload.data(), payload.size());
+
+    int ok = mSerial.writeBytes(frame.data(), static_cast<unsigned int>(frame.size()));
+    return ok == 1 ? DriverCode::OK : DriverCode::WRITE_FAILED;
 }
 
 } // namespace irl::driver

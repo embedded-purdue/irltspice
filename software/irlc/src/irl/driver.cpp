@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <memory>
+#include <vector>
 
 #include <irl/driver.hpp>
 
@@ -100,8 +101,8 @@ bool IrlDriver::topologyValid(IrlTopology const *topo) {
     return topo->mTopoSequenceNumber == seq;
 }
 
-CommandResult<NoResponseExpected> IrlDriver::doProgrammingInner(IrlTopology const *topo,
-                                                                CmdCollection const &cmds) {
+CommandResult<NoResponseExpected>
+IrlDriver::doProgrammingInner(IrlTopology const *topo, CmdIter &cmd_i, CmdIter const &cmd_i_end) {
     if (!topologyValid(topo)) {
         return CRF::staleTopo<NoResponseExpected>();
     }
@@ -111,9 +112,13 @@ CommandResult<NoResponseExpected> IrlDriver::doProgrammingInner(IrlTopology cons
         return r;
     }
 
-    while (!cmds.cmdsDone()) {
-        ProgrammingCommand const &cmd = cmds.currentCmd();
-        cmds.nextCmd();
+    // Collect the commands, by default a command goes to other_cmds unless it is for an spst, in
+    // which case it gets combined into spst_commands
+    std::vector<ProgramPhysicalSwitches> spst_cmds;
+    std::vector<MotherCommandPB> other_cmds;
+
+    for (; cmd_i == cmd_i_end; ++cmd_i) {
+        ProgrammingCommand const &cmd = *cmd_i;
     }
     assert(0 && "irl::IrlDriver::resetTspice is not implemented yet");
 }

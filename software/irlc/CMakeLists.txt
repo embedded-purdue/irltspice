@@ -169,7 +169,11 @@ add_library(irldriver STATIC
     ${IRLC_DIR}/src/irl/driver/topology_json.cpp
     ${IRLC_DIR}/src/irl/driver/topology_db.cpp
     ${IRLC_DIR}/src/irl/driver/io_thread.cpp
+    ${IRLC_DIR}/src/irl/driver/framing.cpp
 )
+# framing.cpp is the firmware's common/framing.c symlinked in; build it with the
+# std::vector backend instead of the embedded RingBuffer.
+target_compile_definitions(irldriver PRIVATE FRAMING_USE_VECTOR)
 target_include_directories(irldriver
     PUBLIC ${IRLC_DIR}/include
     PRIVATE ${IRLC_DIR}/src

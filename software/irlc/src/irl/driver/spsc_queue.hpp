@@ -30,7 +30,7 @@ template <class T> class SpscQueue {
     std::shared_ptr<std::atomic<size_t>> mPopWaitersWakeup;
     // Head ptr. Does not need to be atomic bc only the poper accesses it
     // Still align bc false sharing
-    QNode *mHead;
+    alignas(std::hardware_destructive_interference_size) QNode *mHead;
     // Tail ptr. Does not need to be atomic bc only the poper accesses it
     // Still align bc false sharing
     alignas(std::hardware_destructive_interference_size) QNode *mTail;
@@ -39,21 +39,21 @@ template <class T> class SpscQueue {
     SpscQueue() : mPopWaitersWakeup(new std::atomic<size_t>(0)) {
         QNode *nullNode = new QNode(nullptr, nullptr);
         mHead = nullNode;
-        mHead = nullNode;
+        mTail = nullNode;
     }
 
     // Tries to pop. Null if nothing to pop
     std::unique_ptr<T> try_pop() {
         QNode *next = mHead->next.load(std::memory_order_acquire);
-        std::unique_ptr<T> out{nullptr};
-        if (next) {
-            // Take data
-            out = std::move(next->data);
-            // advance head
-            mHead = next;
-            // free head
-            delete mHead;
+        if (!next) {
+            return nullptr;
         }
+        // `next` holds the value and becomes the new dummy head. The node we
+        // consumed is the old dummy, so free that one - not the new head.
+        QNode *old_head = mHead;
+        mHead = next;
+        std::unique_ptr<T> out = std::move(next->data);
+        delete old_head;
         return out;
     }
 
