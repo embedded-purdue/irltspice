@@ -6,19 +6,34 @@
 // so that `gpio_put_masked` can be used.
 // #define CONTIGUOUS_PINS
 
-const int cd22m_pin_ax[4] = {};
-const int cd22m_pin_ay[3] = {};
-const int cd22m_pin_data = 0;
-const int cd22m_pin_cs = 0;
-const int cd22m_pin_strobe = 0;
-const int cd22m_pin_reset = 0;
+// const int cd22m_pin_ax[4] = {};
+// const int cd22m_pin_ay[3] = {};
+// const int cd22m_pin_data = 0;
+// const int cd22m_pin_cs = 0;
+// const int cd22m_pin_strobe = 0;
+// const int cd22m_pin_reset = 0;
+const int cd22m_pin_ax[4] = {25, 26, 27, 28};
+const int cd22m_pin_ay[3] = {29, 30, 31};
+const int cd22m_pin_data = 33;
+const int cd22m_pin_cs = 32;
+const int cd22m_pin_strobe = 34;
+const int cd22m_pin_reset = 35;
+
+// Required because AX does not exactly correspond
+// to the number of the switch
+static uint8_t intended_x_to_ax[16] = {
+    [0] = 0, [1] = 1, [2] = 2, [3] = 3, [4] = 4, [5] = 5,
+    [6] = 8, [7] = 9, [8] = 10, [9] = 11, [10] = 12, [11] = 13,
+    [12] = 6, [13] = 7,
+    [14] = 14, [15] = 15
+};
 
 #ifdef CONTIGUOUS_PINS
 #define CD22M_PIN_VALUE(ax, ay, data) \
     ((ax << cd22m_pin_ax[0]) | (ay << cd22m_pin_ay[0]) | (data << cd22m_pin_data))
 #define CD22M_PIN_BITMASK CD22M_PIN_VALUE(0b1111, 0b111, 1)
 #define CD22M_ALL_PINS_BITMASK \
-    (CD22M_PIN_BITMASK | (1 << cd22m_pin_cs) | (1 << cd22m_pin_strobe) | (1 < cd22m_pin_reset))
+    (CD22M_PIN_BITMASK | (1 << cd22m_pin_cs) | (1 << cd22m_pin_strobe) | (1 << cd22m_pin_reset))
 #endif
 
 void cd22m_init(void) {
@@ -42,6 +57,8 @@ void cd22m_init(void) {
 }
 
 void cd22m_set_switch(unsigned char ax, unsigned char ay, bool closed) {
+    ax = intended_x_to_ax[ax];
+
 #ifdef CONTIGUOUS_PINS
     gpio_put_masked(CD22M_PIN_BITMASK, CD22M_PIN_VALUE(ax, ay, closed));
 #else
@@ -65,4 +82,5 @@ void cd22m_reset(void) {
     gpio_put(cd22m_pin_reset, true);
     sleep_ms(CD22M_RESET_DELAY_MS);
     gpio_put(cd22m_pin_reset, false);
+    sleep_ms(CD22M_RESET_DELAY_MS);
 }
