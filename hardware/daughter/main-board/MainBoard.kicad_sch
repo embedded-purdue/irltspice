@@ -3118,6 +3118,15 @@
 				(hide yes)
 			)
 		)
+		(property "DKPN" "399-C0603C105K4RACTUCT-ND"
+			(at 43.18 46.99 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "fd766bd7-9fce-4353-b95a-6d373cb7d631")
 		)
@@ -3508,6 +3517,15 @@
 			)
 		)
 		(property "Sim.Device" ""
+			(at 43.18 58.42 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "DKPN" "399-C0603C105K4RACTUCT-ND"
 			(at 43.18 58.42 0)
 			(effects
 				(font
