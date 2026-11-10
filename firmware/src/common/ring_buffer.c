@@ -74,3 +74,7 @@ bool ring_buffer_update_tail(RingBuffer *rb, uint8_t *new_tail) {
 
     return true;
 }
+
+uint8_t *ring_buffer_get_tail(RingBuffer *rb) {
+    return _get_wrapped_addr(rb, (uintptr_t)rb->head + ring_buffer_get_fill(rb));
+}

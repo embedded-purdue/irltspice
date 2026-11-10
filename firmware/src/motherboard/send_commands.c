@@ -1,13 +1,18 @@
+#include "FreeRTOS.h"
 #include "hardware/dma.h"
 #include "hardware/gpio.h"
 #include "hardware/spi.h"
+#include "queue.h"
+#include "task.h"
 
 #include "command.pb.h"
 #include "common/framing.h"
 #include "common/ring_buffer.h"
 #include "pico/platform/sections.h"
 
-// SENDING DATA TO DAUGHTERBOARDS
+#include "command.pb.h"
+
+// SENDING DATA TO / RECEIVING DATA FROM DAUGHTERBOARDS
 
 // Protocol:
 // - spi
@@ -22,58 +27,115 @@
 // - One spi output, different cs
 // - When switching daughterboard, update cs pins and change dma channel
 
-// Message queue?
+// Message queue
 // - place into queue with start addr, length
-// - dma complete interrupt
-// - how does this interact with receiving commands?
+// - dma complete interrupt + poll on spi complete
 
-// Different output queues for each daughterboard?
-//     - probably yeah, but then need different dma channel for each
-//
+// command queue - send command function adds this to queue
+// main function - checks for stuff in queue, checks for active data ready
 
-// 16 bit spi transfers - with framing, don't need to worry about extra bytes
-// Slave raises pin high for ready, need to wait for low and then high again for ready.
-
-// place messages into ring buffer in order
-// set dma transfer count
-
-// 4 dma channels - enable the appropriate one when sending to it and it signals that it has
-// data
+// ===============================================================================================
+// Config
+// ===============================================================================================
 
 #define NUM_DAUGHTERS (4)
-#define SEND_BUFFER_SIZE_BITS (12)
-#define SEND_BUFFER_SIZE (1 << SEND_BUFFER_SIZE_BITS)
+static const uint8_t g_cs_pins[NUM_DAUGHTERS] = {10, 14, 18, 22};
+static const uint8_t g_reset_pins[NUM_DAUGHTERS] = {11, 15, 19, 22};
+static const uint8_t g_data_ready_pins[NUM_DAUGHTERS] = {12, 16, 20, 23};
+static const uint8_t g_status_pins[NUM_DAUGHTERS] = {13, 17, 21, 24};
 
+// Size of buffer will be 1 << x_BUFFER_SIZE_BITS
+// Needs to be power of 2 for DMA purposes
+#define SEND_BUFFER_SIZE_BITS (12)
 #define RECV_BUFFER_SIZE_BITS (12)
+
+#define COMMAND_QUEUE_LENGTH (NUM_DAUGHTERS * 10)
+
+// ===============================================================================================
+// Buffer Setup
+// ===============================================================================================
+
+/* SPI DMA BUFFERS */
+#define SEND_BUFFER_SIZE (1 << SEND_BUFFER_SIZE_BITS)
 #define RECV_BUFFER_SIZE (1 << RECV_BUFFER_SIZE_BITS)
 
-static const uint8_t g_cs_pins[4] = {10, 11, 12, 13};
 __attribute__((__aligned__(
     SEND_BUFFER_SIZE))) static volatile uint8_t g_send_buffers[NUM_DAUGHTERS][SEND_BUFFER_SIZE];
 __attribute__((__aligned__(
     RECV_BUFFER_SIZE))) static volatile uint8_t g_recv_buffers[NUM_DAUGHTERS][RECV_BUFFER_SIZE];
 
+/* Command Queue */
+typedef struct {
+    uint8_t daughter_id;
+    uint16_t len;
+    uint8_t type;
+} CommandQueueEntry;
+
+static uint8_t g_command_queue_storage_buffer[COMMAND_QUEUE_LENGTH * sizeof(CommandQueueEntry)];
+static StaticQueue_t g_command_queue_structure;
+static QueueHandle_t g_command_queue_handle;
+
+// ================================================================================================
+// Global State
+// ================================================================================================
+
+typedef enum {
+    NOT_PRESENT,
+    READY,
+    TOPO_REQUESTED,
+    RECEIVING,
+    STOP_REQUESTED,
+    ERROR,
+} DaughterState;
+
 typedef struct {
     RingBuffer send_buffer;
     RingBuffer recv_buffer;
+    FrameParser recv_parser;
     uint8_t cs_pin;
+    uint8_t reset_pin;
+    uint8_t data_ready_pin;
+    uint8_t status_pin;
+    DaughterboardTopology info;
+    DaughterState state;
+    DaughterResponse last_response;
+    uint16_t cmd_cnt; // number of programming commands sent in current cycle. Compared against
+                      // daughter's stop response.
 } DaughterBoard;
 
 static DaughterBoard g_daughters[NUM_DAUGHTERS];
+
 static uint8_t g_send_dma_ch;
 __attribute__((used)) static uint8_t g_recv_dma_ch;
 
-// spi transfer complete interrupt handler
+// ================================================================================================
+// Interrupt Handlers
+// ================================================================================================
+
+// dma transfer complete interrupt handler
 // placed "not in flash" to prevent needing to load from flash during interrupt - best practice for
 // all interrupt handlers
-void __not_in_flash_func(spi_transfer_complete_handler)() {
-    // check if dma transfer is also done
-    // This is in case dma is slow because of bus traffic and spi completes transfers before all dma
-    // transfers have happened
+void __not_in_flash_func(dma_transfer_complete_handler)() {
+    // signal that dma transfer is completed
+    // main thread will sleep until this happens, then poll until spi is complete
 }
 
+void __not_in_flash_func(data_ready_pin_high_handler)() {
+    // signal that daughter has data ready
+}
+
+void __not_in_flash_func(status_pin_handler)() {
+    // update global state of daughter
+}
+
+// ================================================================================================
+// Initialization
+// ================================================================================================
+
 void send_command_init() {
-    // setup spi
+
+    /* SETUP SPI PERIPHERAL */
+
     // this enables dma requests by default
     spi_init(spi0, 2000000);
     spi_set_format(spi0, 8, SPI_CPOL_0, SPI_CPHA_0, SPI_MSB_FIRST);
@@ -89,7 +151,8 @@ void send_command_init() {
     gpio_set_function(4, GPIO_FUNC_SPI);
     gpio_set_function(6, GPIO_FUNC_SPI);
 
-    // setup send dma
+    /* SETUP SEND DMA */
+
     g_send_dma_ch = dma_claim_unused_channel(true);
 
     dma_channel_config_t cfg = dma_channel_get_default_config(g_send_dma_ch);
@@ -102,6 +165,18 @@ void send_command_init() {
     dma_channel_configure(g_send_dma_ch, &cfg, &spi0_hw->dr, NULL, 0, false);
 
     // TODO: setup recv dma
+    g_recv_dma_ch = dma_claim_unused_channel(true);
+
+    cfg = dma_channel_get_default_config(g_recv_dma_ch);
+    channel_config_set_read_increment(&cfg, false);
+    channel_config_set_write_increment(&cfg, true);
+    channel_config_set_dreq(&cfg, spi_get_dreq(spi0, true));
+    channel_config_set_transfer_data_size(&cfg, DMA_SIZE_8);
+    channel_config_set_ring(&cfg, true, RECV_BUFFER_SIZE_BITS);
+
+    dma_channel_configure(g_send_dma_ch, &cfg, NULL, &spi0_hw->dr, 0, false);
+
+    /* SETUP GPIO AND INIT DAUGHTERBOARD STRUCTS */
 
     for (uint8_t i = 0; i < NUM_DAUGHTERS; i++) {
         // setup gpio
@@ -111,41 +186,191 @@ void send_command_init() {
         gpio_put(cs_pin, true);
         g_daughters[i].cs_pin = cs_pin;
 
+        uint8_t reset_pin = g_reset_pins[i];
+        gpio_init(reset_pin);
+        gpio_set_dir(reset_pin, true);
+        gpio_put(reset_pin, true);
+        g_daughters[i].reset_pin = reset_pin;
+
+        uint8_t data_ready_pin = g_data_ready_pins[i];
+        gpio_init(data_ready_pin);
+        g_daughters[i].data_ready_pin = data_ready_pin;
+
+        uint8_t status_pin = g_status_pins[i];
+        gpio_init(status_pin);
+        g_daughters[i].status_pin = status_pin;
+
         // setup buffer
         ring_buffer_init(&g_daughters[i].send_buffer, g_send_buffers[i], SEND_BUFFER_SIZE);
         ring_buffer_init(&g_daughters[i].recv_buffer, g_recv_buffers[i], RECV_BUFFER_SIZE);
+        frame_parser_init(&g_daughters[i].recv_parser, &g_daughters[i].recv_buffer);
+
+        g_daughters[i].info = (DaughterboardTopology)DaughterboardTopology_init_default;
+
+        g_daughters[i].state = NOT_PRESENT;
     }
+
+    /* SETUP COMMAND QUEUE */
+
+    g_command_queue_handle =
+        xQueueCreateStatic(COMMAND_QUEUE_LENGTH, sizeof(CommandQueueEntry),
+                           g_command_queue_storage_buffer, &g_command_queue_structure);
 }
 
+// ================================================================================================
+// Public API
+// ================================================================================================
+
 bool send_command(uint8_t daughter_id, DaughterCommand *command) {
-    if (dma_channel_is_busy(g_send_dma_ch)) {
-        return false;
-    }
+    // TODO: check if command is valid based on daughter state
 
     RingBuffer *rb = &g_daughters[daughter_id].send_buffer;
 
+    // TODO: add length check before framing proto. Do not overflow send buffer.
     uint16_t len = frame_proto(rb, DaughterCommand_fields, command);
 
-    gpio_put(g_daughters[daughter_id].cs_pin, false);
+    CommandQueueEntry entry = {.daughter_id = daughter_id, .len = len, .type = command->which_cmd};
+    return xQueueSend(g_command_queue_handle, &entry, portMAX_DELAY);
+}
 
-    // TODO: place into command queue that is serviced by dma complete interrupt
-    dma_channel_set_read_addr(g_send_dma_ch, rb->head, false);
-    dma_channel_set_trans_count(g_send_dma_ch, len, true);
+// ================================================================================================
+// Business Logic - Task Implementation
+// ================================================================================================
 
-    // TODO: make asynchronous using dma complete interrupts
-    // actually dma complete just means everything is in the fifo, and there is no spi complete
-    // interrupt. Not a great way to make this async. Could sleep until dma empty interrupt, then
-    // poll spi busy.
-    while (dma_channel_is_busy(g_send_dma_ch))
-        ;
-    while (spi_is_busy(spi0))
-        ;
+void daughter_comms_task(void *pvParameters) {
+    (void)pvParameters;
 
-    gpio_put(g_daughters[daughter_id].cs_pin, true);
+    /* RESET EACH DAUGHTER */
+    for (uint8_t id = 0; id < NUM_DAUGHTERS; id++) {
+        gpio_put(g_reset_pins[id], 0);
+    }
+    vTaskDelay(100);
+    for (uint8_t id = 0; id < NUM_DAUGHTERS; id++) {
+        gpio_put(g_reset_pins[id], 1);
+    }
 
-    // TODO: make the fill set to something appropriate based on size of message sent
-    ring_buffer_set_head(rb, (uint8_t *)dma_hw->ch[g_send_dma_ch].read_addr);
-    ring_buffer_set_fill(rb, 0);
+    for (;;) {
 
-    return true;
+        /* POP COMMAND FROM QUEUE + CHECK FOR DATA READY SIGNALS */
+
+        CommandQueueEntry queue_entry;
+        bool is_suck = false;
+        if (!xQueueReceive(g_command_queue_handle, &queue_entry, 0)) {
+            for (uint8_t id = 0; id < NUM_DAUGHTERS; ++id) {
+                if (gpio_get(g_data_ready_pins[id])) {
+                    is_suck = true;
+                    queue_entry.daughter_id = id;
+                    queue_entry.len = DaughterResponse_size;
+                    break;
+                }
+            }
+
+            // nothing in queue or daughter data ready - don't send any spi
+            continue;
+        }
+
+        /* SEND COMMAND */
+
+        DaughterBoard *daughter = &g_daughters[queue_entry.daughter_id];
+        uint16_t len = queue_entry.len;
+        RingBuffer *send_rb = &daughter->send_buffer;
+        RingBuffer *recv_rb = &daughter->recv_buffer;
+        gpio_put(daughter->cs_pin, false);
+
+        // Setup spi buffer to send from - if pulling data out, just send 0s
+        dma_channel_config_t cfg = dma_get_channel_config(g_send_dma_ch);
+        if (is_suck) {
+            static uint8_t dummy = 0;
+            channel_config_set_read_increment(&cfg, false);
+            dma_channel_set_config(g_send_dma_ch, &cfg, false);
+            dma_channel_set_read_addr(g_send_dma_ch, &dummy, false);
+        } else {
+            channel_config_set_read_increment(&cfg, true);
+            dma_channel_set_config(g_send_dma_ch, &cfg, false);
+            dma_channel_set_read_addr(g_send_dma_ch, send_rb->head, false);
+        }
+        dma_channel_set_write_addr(g_recv_dma_ch, ring_buffer_get_tail(recv_rb), false);
+        dma_channel_set_trans_count(g_send_dma_ch, len, true);
+        dma_channel_set_trans_count(g_recv_dma_ch, len, true);
+
+        /* UPDATE DAUGHTER STATE */
+
+        if (!is_suck) {
+            switch (daughter->state) {
+            case READY:
+                if (queue_entry.type == DaughterCommand_topo_tag) {
+                    daughter->state = TOPO_REQUESTED;
+                } else if (queue_entry.type == DaughterCommand_prog_tag) {
+                    daughter->state = RECEIVING;
+                    daughter->cmd_cnt = 1;
+                } else {
+                    daughter->state = ERROR;
+                }
+                break;
+            case RECEIVING:
+                if (queue_entry.type == DaughterCommand_prog_tag) {
+                    daughter->cmd_cnt++;
+                } else {
+                    daughter->state = ERROR;
+                }
+                break;
+            case TOPO_REQUESTED:
+            case STOP_REQUESTED:
+            case NOT_PRESENT:
+            case ERROR:
+                daughter->state = ERROR;
+                break;
+            }
+        }
+
+        /* COMPLETE SPI TRANSFER */
+
+        // TODO: make asynchronous using dma complete interrupts
+        // No direct spi complete interrupt. Wait on dma complete interrupt, then poll spi.
+        while (dma_channel_is_busy(g_send_dma_ch))
+            ;
+        while (spi_is_busy(spi0))
+            ;
+
+        gpio_put(daughter->cs_pin, true);
+
+        /* PARSE DAUGHTER RESPONSE */
+
+        ring_buffer_set_fill(recv_rb, ring_buffer_get_fill(recv_rb) + len);
+
+        DaughterResponse *response = &daughter->last_response;
+        if (frame_parser_parse_for_proto(&daughter->recv_parser, DaughterResponse_fields,
+                                         response)) {
+            switch (daughter->state) {
+            case TOPO_REQUESTED:
+                if (response->which_data == DaughterResponse_topo_tag) {
+                    daughter->state = READY;
+                } else {
+                    daughter->state = ERROR;
+                }
+                break;
+            case STOP_REQUESTED:
+                if (response->which_data == DaughterResponse_stop_tag) {
+                    // TODO: compare cmd_cnt
+                    daughter->state = READY;
+                } else {
+                    daughter->state = ERROR;
+                }
+                break;
+            case NOT_PRESENT:
+            case READY:
+            case RECEIVING:
+            case ERROR:
+                daughter->state = ERROR;
+                break;
+            }
+        }
+
+        /* UPDATE SEND BUFFER STATE */
+
+        if (!is_suck) {
+            ring_buffer_set_head(send_rb, (uint8_t *)dma_hw->ch[g_send_dma_ch].read_addr);
+            ring_buffer_set_fill(send_rb, ring_buffer_get_fill(send_rb) - len);
+        }
+    }
 }

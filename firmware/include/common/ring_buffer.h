@@ -38,6 +38,8 @@ static inline void ring_buffer_set_fill(RingBuffer *rb, uint32_t fill) { rb->fil
 
 static inline uint32_t ring_buffer_get_size(RingBuffer *rb) { return rb->buffer_size; }
 
+uint8_t *ring_buffer_get_tail(RingBuffer *rb);
+
 #ifdef __cplusplus
 }
 #endif

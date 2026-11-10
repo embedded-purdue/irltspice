@@ -6,4 +6,6 @@
 void send_command_init();
 bool send_command(uint8_t daughter_id, DaughterCommand *command);
 
+void daughter_comms_task(void *pvParameters);
+
 #endif // __MOTHERBOARD_SEND_COMMANDS_H__
