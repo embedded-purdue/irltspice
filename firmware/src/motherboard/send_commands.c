@@ -40,9 +40,13 @@
 
 #define NUM_DAUGHTERS (4)
 static const uint8_t g_cs_pins[NUM_DAUGHTERS] = {10, 14, 18, 22};
-static const uint8_t g_reset_pins[NUM_DAUGHTERS] = {11, 15, 19, 22};
-static const uint8_t g_data_ready_pins[NUM_DAUGHTERS] = {12, 16, 20, 23};
-static const uint8_t g_status_pins[NUM_DAUGHTERS] = {13, 17, 21, 24};
+static const uint8_t g_reset_pins[NUM_DAUGHTERS] = {11, 15, 19, 23};
+static const uint8_t g_data_ready_pins[NUM_DAUGHTERS] = {12, 16, 20, 24};
+static const uint8_t g_status_pins[NUM_DAUGHTERS] = {13, 17, 21, 25};
+
+#define MOSI_PIN (3)
+#define MISO_PIN (4)
+#define SCK_PIN (6)
 
 // Size of buffer will be 1 << x_BUFFER_SIZE_BITS
 // Needs to be power of 2 for DMA purposes
@@ -106,7 +110,7 @@ typedef struct {
 static DaughterBoard g_daughters[NUM_DAUGHTERS];
 
 static uint8_t g_send_dma_ch;
-__attribute__((used)) static uint8_t g_recv_dma_ch;
+static uint8_t g_recv_dma_ch;
 
 // ================================================================================================
 // Interrupt Handlers
@@ -140,16 +144,9 @@ void send_command_init() {
     spi_init(spi0, 2000000);
     spi_set_format(spi0, 8, SPI_CPOL_0, SPI_CPHA_0, SPI_MSB_FIRST);
 
-    // PINS
-    //  - TX: 3
-    //  - RX: 4
-    //  - SCK: 6
-    //  - CSn: handle ourselves
-    //      - could hypothetically have a dma channel with buffer for csn output that chains to the
-    //      spi transfer but def overkill
-    gpio_set_function(3, GPIO_FUNC_SPI);
-    gpio_set_function(4, GPIO_FUNC_SPI);
-    gpio_set_function(6, GPIO_FUNC_SPI);
+    gpio_set_function(MOSI_PIN, GPIO_FUNC_SPI);
+    gpio_set_function(MISO_PIN, GPIO_FUNC_SPI);
+    gpio_set_function(SCK_PIN, GPIO_FUNC_SPI);
 
     /* SETUP SEND DMA */
 
@@ -164,17 +161,16 @@ void send_command_init() {
 
     dma_channel_configure(g_send_dma_ch, &cfg, &spi0_hw->dr, NULL, 0, false);
 
-    // TODO: setup recv dma
     g_recv_dma_ch = dma_claim_unused_channel(true);
 
     cfg = dma_channel_get_default_config(g_recv_dma_ch);
     channel_config_set_read_increment(&cfg, false);
     channel_config_set_write_increment(&cfg, true);
-    channel_config_set_dreq(&cfg, spi_get_dreq(spi0, true));
+    channel_config_set_dreq(&cfg, spi_get_dreq(spi0, false));
     channel_config_set_transfer_data_size(&cfg, DMA_SIZE_8);
-    channel_config_set_ring(&cfg, true, RECV_BUFFER_SIZE_BITS);
+    channel_config_set_ring(&cfg, false, RECV_BUFFER_SIZE_BITS);
 
-    dma_channel_configure(g_send_dma_ch, &cfg, NULL, &spi0_hw->dr, 0, false);
+    dma_channel_configure(g_recv_dma_ch, &cfg, NULL, &spi0_hw->dr, 0, false);
 
     /* SETUP GPIO AND INIT DAUGHTERBOARD STRUCTS */
 
@@ -248,6 +244,7 @@ void daughter_comms_task(void *pvParameters) {
     for (uint8_t id = 0; id < NUM_DAUGHTERS; id++) {
         gpio_put(g_reset_pins[id], 1);
     }
+    vTaskDelay(100);
 
     for (;;) {
 
@@ -266,7 +263,9 @@ void daughter_comms_task(void *pvParameters) {
             }
 
             // nothing in queue or daughter data ready - don't send any spi
-            continue;
+            if (!is_suck) {
+                continue;
+            }
         }
 
         /* SEND COMMAND */
@@ -290,8 +289,8 @@ void daughter_comms_task(void *pvParameters) {
             dma_channel_set_read_addr(g_send_dma_ch, send_rb->head, false);
         }
         dma_channel_set_write_addr(g_recv_dma_ch, ring_buffer_get_tail(recv_rb), false);
-        dma_channel_set_trans_count(g_send_dma_ch, len, true);
         dma_channel_set_trans_count(g_recv_dma_ch, len, true);
+        dma_channel_set_trans_count(g_send_dma_ch, len, true);
 
         /* UPDATE DAUGHTER STATE */
 
@@ -369,8 +368,7 @@ void daughter_comms_task(void *pvParameters) {
         /* UPDATE SEND BUFFER STATE */
 
         if (!is_suck) {
-            ring_buffer_set_head(send_rb, (uint8_t *)dma_hw->ch[g_send_dma_ch].read_addr);
-            ring_buffer_set_fill(send_rb, ring_buffer_get_fill(send_rb) - len);
+            ring_buffer_update_head(send_rb, (uint8_t *)dma_hw->ch[g_send_dma_ch].read_addr);
         }
     }
 }

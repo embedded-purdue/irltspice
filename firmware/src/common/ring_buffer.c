@@ -65,14 +65,38 @@ bool ring_buffer_update_tail(RingBuffer *rb, uint8_t *new_tail) {
         fill = ring_buffer_get_size(rb) - (head - tail);
     }
 
+    bool ret = true;
     if (fill < rb->fill) {
         // overflow detected
         ++rb->overflow_cnt;
-        return false;
+        ret = false;
     }
     rb->fill = fill;
 
-    return true;
+    return ret;
+}
+
+bool ring_buffer_update_head(RingBuffer *rb, uint8_t *new_head) {
+    uintptr_t head = (uintptr_t)new_head;
+    uintptr_t tail = (uintptr_t)_get_wrapped_addr(rb, (uintptr_t)rb->head + rb->fill);
+
+    uint32_t fill = 0;
+    if (tail >= head) {
+        fill = tail - head;
+    } else {
+        fill = ring_buffer_get_size(rb) - (head - tail);
+    }
+
+    bool ret = true;
+    if (fill > rb->fill) {
+        // overflow detected
+        // head placed after tail
+        ++rb->overread_cnt;
+        ret = false;
+    }
+    rb->fill = fill;
+
+    return ret;
 }
 
 uint8_t *ring_buffer_get_tail(RingBuffer *rb) {

@@ -60,6 +60,8 @@ void mx_init();
 /* Private defines -----------------------------------------------------------*/
 #define LED_Pin GPIO_PIN_5
 #define LED_GPIO_Port GPIOA
+#define DATA_READY_Pin GPIO_PIN_8
+#define DATA_READY_GPIO_Port GPIOA
 
 /* USER CODE BEGIN Private defines */
 
