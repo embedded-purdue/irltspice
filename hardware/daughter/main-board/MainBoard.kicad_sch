@@ -4965,7 +4965,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Connector_PinHeader_2.54mm:PinHeader_2x10_P2.54mm_Horizontal"
 			(at 34.29 110.49 0)
 			(effects
 				(font
