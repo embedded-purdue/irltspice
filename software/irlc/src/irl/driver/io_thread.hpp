@@ -3,9 +3,11 @@
 #include <atomic>
 #include <chrono>
 #include <cstddef>
+#include <iostream>
 #include <memory>
 #include <optional>
 #include <random>
+#include <ratio>
 #include <string>
 #include <string_view>
 #include <thread>
@@ -38,12 +40,12 @@ struct DriverCmdResult {
 
 struct DriverCmd {
     struct DisconnectSerial {};
-    struct ConectSerial {
+    struct ConnectSerial {
         std::string port;
     };
 
     size_t cmd_no;
-    std::variant<MotherCommandPB, DisconnectSerial, ConectSerial> cmd;
+    std::variant<MotherCommandPB, DisconnectSerial, ConnectSerial> cmd;
 };
 
 // Shared data between main and the worker thread.
@@ -95,7 +97,7 @@ class IoThreadWorker {
 
     DriverCode run_cmd(MotherCommandPB const &cmd);
     DriverCode run_cmd(DriverCmd::DisconnectSerial const &disconnect);
-    DriverCode run_cmd(DriverCmd::ConectSerial const &connect);
+    DriverCode run_cmd(DriverCmd::ConnectSerial const &connect);
 
     DriverCode serialize_and_send(::google::protobuf::Message const *msg);
 
@@ -127,7 +129,7 @@ class IoThread {
     size_t cmd_no;
 
   public:
-    IoThread() : mCtx(new IoThreadShared()), mThread(&run_io_thread, mCtx) {}
+    IoThread() : mCtx(new IoThreadShared()), mThread(&run_io_thread, std::weak_ptr(mCtx)) {}
 
     inline size_t get_topo_sequence_no() {
         return mCtx->aTopologySequenceNo.load(std::memory_order_relaxed);
@@ -142,6 +144,8 @@ class IoThread {
         return mCtx->boardResponsesToMain;
     }
 
+    // Responses:
+    //  OK - ok
     inline size_t send_disconnect() {
         cmd_no++;
         mCtx->outgoingCmdsToIo.push(
@@ -149,13 +153,22 @@ class IoThread {
         return cmd_no;
     }
 
+    // Responses:
+    //  OK - ok
+    //  DEVICE_NOT_FOUND - Could not find serial port
+    //  SERIAL_CLOSED - Other error
     inline size_t send_connect(std::string_view stview) {
         cmd_no++;
         mCtx->outgoingCmdsToIo.push(
-            std::make_unique<DriverCmd>(cmd_no, DriverCmd::ConectSerial{std::string(stview)}));
+            std::make_unique<DriverCmd>(cmd_no, DriverCmd::ConnectSerial{std::string(stview)}));
         return cmd_no;
     }
 
+    // Responses:
+    //  OK - ok
+    //  SERIAL_CLOSED - port not connected
+    //  FAILED_TO_SERIALIZE - couldn't serialize protobuf
+    //  WRITE_FAILED - failed to write the bytes to the serial device
     inline size_t send_cmd(MotherCommandPB &&cmd) {
         cmd_no++;
         mCtx->outgoingCmdsToIo.push(std::make_unique<DriverCmd>(cmd_no, std::move(cmd)));
@@ -166,9 +179,10 @@ class IoThread {
         auto start = std::chrono::steady_clock::now();
         std::unique_ptr<DriverCmdResult> resp = nullptr;
         auto now = std::chrono::steady_clock::now();
-        while (now - start < ms && !(resp && resp->cmd_no < cmd_no)) {
+        // Spin
+        while (now - start < ms && !(resp && resp->cmd_no == cmd_no)) {
             resp = mCtx->driverResponsesToMain.try_pop();
-            // Spin
+            now = std::chrono::steady_clock::now();
         }
         if (resp && resp->cmd_no == cmd_no) {
             return resp->code;

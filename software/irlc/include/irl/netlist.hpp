@@ -48,6 +48,11 @@ struct SpstId {
     uint8_t ic_id;
     // Which board is it?
     BoardId board_id;
+
+    uint32_t make_uint() const {
+        static_assert(sizeof(SpstId) == sizeof(uint32_t));
+        return std::bit_cast<uint32_t>(*this);
+    }
 };
 
 // Identifies a programmable resistor that is part of a multi-resitor IC

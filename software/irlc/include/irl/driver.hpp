@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -17,7 +18,7 @@
 #include <irl/detail/virt_iter.hpp>
 #include <irl/netlist.hpp>
 
-class serialib;
+class MotherCommand;
 
 namespace irl::driver {
 
@@ -29,6 +30,7 @@ enum class CommandErrorCode {
     TIMEOUT_RX,
     TIMEOUT_TX,
     TX_FAILED,
+    CMD_COUNT_MISMATCH,
     CHECKSUM_ERROR,
     OTHER_SYSTEM,
 };
@@ -38,10 +40,7 @@ struct CommandError {
     std::string msg;
     CommandErrorCode code;
 };
-inline std::ostream &operator<<(std::ostream &os, const CommandError &err) {
-    os << "AHHH";
-    return os;
-}
+std::ostream &operator<<(std::ostream &os, const CommandError &err);
 
 // The result of sending a command to the tspice
 // Either an error or the response
@@ -54,11 +53,18 @@ template <typename Data> class CommandResult {
 
     // A collection of static helper methods to create these results
     friend class CRF;
+    template <typename T> friend class CommandResult;
 
   public:
     // Did this command result in an error?
     // If true, getData() = nullptr
     bool isError() const { return std::holds_alternative<CommandError>(mInfo); }
+
+    template <typename OtherData>
+        requires(!(std::same_as<Data, OtherData>))
+    CommandResult<OtherData> cast_error() {
+        return CommandResult<OtherData>{std::move(std::get<CommandError>(this->mInfo))};
+    }
 
     // gets the data, null if an error, and points to this object
     Data const *getData() const { return std::get_if<Data>(&mInfo); };
@@ -70,6 +76,7 @@ template <typename Data> class CommandResult {
 struct NoResponseExpected {};
 
 class IoThread;
+class LazyTopologyDB;
 
 // The class used for interfacing with the tspice
 // The software follows a single-producer single-consumer architecture
@@ -82,10 +89,19 @@ class IrlDriver {
     // Non-nullable, but thread->alive may become false at any time
     // We're doing a pimpl basically here, but trust it's so much nicer
     std::unique_ptr<IoThread> mIoThread;
+    // Pimpl for the store of topologies
+    std::unique_ptr<LazyTopologyDB> mTopoDb;
 
     using CmdIter = detail::VirtInputIter<ProgrammingCommand>;
     CommandResult<NoResponseExpected> doProgrammingInner(IrlTopology const *topo, CmdIter &cmd_i,
                                                          CmdIter const &cmd_i_end);
+
+    CommandResult<NoResponseExpected>
+    await_cmd_send(size_t seq_no,
+                   std::chrono::milliseconds timeout = std::chrono::milliseconds{100});
+
+    CommandResult<NoResponseExpected> sendProgrammingCommandSerialized(IrlTopology const *topo,
+                                                                       ::MotherCommand &&cmd);
 
   public:
     // Create a driver and bind it to a serial port.

@@ -4,6 +4,7 @@
 #include <atomic>
 #include <chrono>
 #include <cstddef>
+#include <iostream>
 #include <memory>
 #include <new>
 #include <thread>
@@ -86,8 +87,9 @@ template <class T> class SpscQueue {
                 [ms, oldwakeup](std::weak_ptr<std::atomic<size_t>> popwaitersptr) {
                     std::this_thread::sleep_for(ms);
                     auto wakeup = popwaitersptr.lock();
-                    if (wakeup && wakeup->load(std::memory_order_relaxed) != oldwakeup) {
+                    if (wakeup && wakeup->load(std::memory_order_relaxed) == oldwakeup) {
                         wakeup->fetch_add(1, std::memory_order_relaxed);
+                        wakeup->notify_all();
                     }
                 },
                 mPopWaitersWakeup)

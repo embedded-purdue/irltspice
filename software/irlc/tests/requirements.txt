@@ -1,0 +1,12 @@
+# Python dependencies for the integration test harness (firmware_sim.py).
+#
+# The harness runs `protoc` itself to turn proto/command.proto into Python
+# bindings, so `protoc` must be on PATH (e.g. `brew install protobuf`).
+#
+# protoc emits a runtime-version check into command_pb2.py, so the `protobuf`
+# runtime here must be compatible with the compiler that generated it. If you
+# hit a version error, install a matching runtime, e.g.:
+#
+#   protoc --version          # libprotoc 36.2
+#   python -m pip install protobuf
+protobuf

@@ -46,10 +46,10 @@ struct ProgramPhysicalSwitches {
     // The sw_id of this field will be ignored
     SpstId spst_ic_id;
     // Which switches on this IC should be modified by this command
-    uint32_t active_bitmask;
+    uint32_t active_bitmask = 0;
     // What state to set each of the switches to (only meaningful for bits where active_bitmask==1)
     // 1 = closed/connected 0 = open/disconnected
-    uint32_t onoff_bitmask;
+    uint32_t onoff_bitmask = 0;
 };
 
 // A programming command to send to the tspice

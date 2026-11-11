@@ -3,6 +3,7 @@
 #include <atomic>
 #include <chrono>
 #include <cstdint>
+#include <iostream>
 #include <memory>
 #include <thread>
 #include <variant>
@@ -15,8 +16,9 @@ static void wakeup_thread_main(std::weak_ptr<std::atomic<size_t>> waker) {
         auto locked = waker.lock();
         if (locked) {
             locked->fetch_add(1, std::memory_order_relaxed);
+            locked->notify_all();
         } else {
-            // other stuff has been free-ed. We done
+            // other stuff has been freed. We done
             break;
         }
     }
@@ -42,7 +44,7 @@ IoThreadWorker::IoThreadWorker(std::weak_ptr<IoThreadShared> ctx)
     LOCK();
     std::thread(wakeup_thread_main, mCtx->outgoingCmdsToIo.get_waker_token()).detach();
     UNLOCK();
-    // Don't have to worry about joining bc eventually when stuff
+    // Don't have to worry about joining bc eventually when stuff is freed this will be freed too
 }
 
 extern void run_io_thread(std::weak_ptr<IoThreadShared> ctx) {
@@ -51,10 +53,11 @@ extern void run_io_thread(std::weak_ptr<IoThreadShared> ctx) {
 }
 
 void IoThreadWorker::main() {
+    std::cout << "Io thread running!\n";
     while (true) {
         // Look for incoming commands, eventually we'll get woken up but that's fine
         // If we have them, send them
-        LOCK();
+        LOCK(); // Will return if expired
         std::unique_ptr<DriverCmd> cmd = mCtx->outgoingCmdsToIo.pop_or_wake();
         for (; cmd; cmd = mCtx->outgoingCmdsToIo.try_pop()) {
             DriverCode result = std::visit([&](auto const &c) { return run_cmd(c); }, cmd->cmd);
@@ -64,7 +67,7 @@ void IoThreadWorker::main() {
         // Now time to read. Pull whatever bytes have shown up and dispatch every
         // complete frame to the main thread.
         poll_serial();
-        UNLOCK();
+        UNLOCK(); // Will return if expired
     }
 }
 
@@ -85,6 +88,7 @@ void IoThreadWorker::poll_serial() {
     // frame_parser_parse() returns true as long as a complete frame is pending,
     // so process_frame() must retire it before we can parse the next one.
     while (frame_parser_parse(&mFrameParser)) {
+        std::cout << "IO - got a framed resp!\n";
         process_frame();
     }
 }
@@ -98,8 +102,10 @@ void IoThreadWorker::process_frame() {
     if (!ok) {
         return;
     }
+    std::cout << "  IO - " << response.DebugString();
 
     if (response.has_topo()) {
+        std::cout << "  IO - Sent topo back!\n";
         size_t seq = mCtx->aTopologySequenceNo.fetch_add(1, std::memory_order_relaxed) + 1;
         mCtx->topologiesToMain.push(
             std::make_unique<std::pair<TopologyResponsePB, size_t>>(response.topo(), seq));
@@ -124,13 +130,15 @@ void IoThreadWorker::disconnect() {
 
 DriverCode IoThreadWorker::run_cmd(MotherCommandPB const &cmd) { return serialize_and_send(&cmd); }
 DriverCode IoThreadWorker::run_cmd(DriverCmd::DisconnectSerial const &disconnect_cmd) {
+    std::cout << "IO - disconnecting\n";
     disconnect();
     return OK;
 }
 
-DriverCode IoThreadWorker::run_cmd(DriverCmd::ConectSerial const &connect_cmd) {
+DriverCode IoThreadWorker::run_cmd(DriverCmd::ConnectSerial const &connect_cmd) {
     disconnect();
     char result = mSerial.openDevice(connect_cmd.port.c_str(), 115200);
+    std::cout << "IO - Opened: " << connect_cmd.port << ", with code: " << (int)result << "\n";
     if (result == 1 && is_connected()) {
         return OK;
     } else if (result == -1) {
@@ -143,12 +151,15 @@ DriverCode IoThreadWorker::run_cmd(DriverCmd::ConectSerial const &connect_cmd) {
 IoThreadWorker::~IoThreadWorker() { mSerial.closeDevice(); }
 
 DriverCode IoThreadWorker::serialize_and_send(::google::protobuf::Message const *msg) {
+    std::cout << "IO - serialize_and_send...\n";
     if (!is_connected()) {
+        std::cout << "  IO - not connected\n";
         return DriverCode::SERIAL_CLOSED;
     }
 
     std::vector<uint8_t> payload(msg->ByteSizeLong());
     if (!msg->SerializeToArray(payload.data(), static_cast<int>(payload.size()))) {
+        std::cout << "  IO - failed to serialize\n";
         return DriverCode::FAILED_TO_SERIALIZE;
     }
 
@@ -157,6 +168,7 @@ DriverCode IoThreadWorker::serialize_and_send(::google::protobuf::Message const 
     frame_payload(&frame, payload.data(), payload.size());
 
     int ok = mSerial.writeBytes(frame.data(), static_cast<unsigned int>(frame.size()));
+    std::cout << "  IO - wrote with code: " << ok << "\n";
     return ok == 1 ? DriverCode::OK : DriverCode::WRITE_FAILED;
 }
 

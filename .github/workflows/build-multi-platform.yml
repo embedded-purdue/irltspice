@@ -1,9 +1,9 @@
-# Baed on https://github.com/actions/starter-workflows/blob/main/ci/cmake-single-platform.yml
+# Based on https://github.com/actions/starter-workflows/blob/main/ci/cmake-single-platform.yml
 name: Multiple Platform IRLC Build
 
 on:
   push:
-    branches: [ "main", "software" ]
+    branches: [ "main", "software", "interface-refactor" ]
   pull_request:
     branches: [ "main", "software" ]
 

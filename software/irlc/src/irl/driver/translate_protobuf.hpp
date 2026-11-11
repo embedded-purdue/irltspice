@@ -32,11 +32,11 @@ using CommandResponsePB = ::MotherResponse;
 // Only meaningful for the following command types (which have a direct protobuf analog):
 //  - ProgramXbar
 //  - ProgramPhysicalSwitches
-void initProgrammingCmd(MotherCommand *out, irl::ProgrammingCommand const &pcmd);
+void initProgrammingCmd(MotherCommandPB *out, irl::ProgrammingCommand const &pcmd);
 
-void initStopProgrammingCmd(MotherCommand *out);
+void initStopProgrammingCmd(MotherCommandPB *out);
 
-void initTopoRequestCmd(MotherCommand *out);
+void initTopoRequestCmd(MotherCommandPB *out);
 
 class TopoUnpacker {
   public:

@@ -3,6 +3,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <iostream>
 #include <span>
 #include <string_view>
 
@@ -14,7 +15,7 @@ using namespace irl;
 using namespace irl::driver;
 
 void print_usage(const char *name) {
-    printf("Usage: %s MOTHER_ID [DAUGHTER_ID] -- IC_ID ROW COL ON/OFF\n"
+    printf("Usage: %s SERIAL_PORT MOTHER_ID [DAUGHTER_ID] -- IC_ID ROW COL ON/OFF\n"
            "  where ON/OFF is 1/0\n",
            name);
 }
@@ -28,7 +29,7 @@ int main(int argc, const char **argv) {
     }
     int pre_dash = dashloc - 1;
     int post_dash = argc - 1 - dashloc;
-    if (dashloc < 0 || pre_dash < 1 || pre_dash > 2 || post_dash != 4) {
+    if (dashloc < 0 || pre_dash < 2 || pre_dash > 3 || post_dash != 4) {
         print_usage(argv[0]);
         return -1;
     }
@@ -39,9 +40,9 @@ int main(int argc, const char **argv) {
                 .ic_id = static_cast<uint16_t>(strtol(argv[dashloc + 1], nullptr, 10)),
                 .board_id =
                     BoardId{
-                        .mother_id = static_cast<MotherId_t>(strtol(argv[1], nullptr, 10)),
+                        .mother_id = static_cast<MotherId_t>(strtol(argv[2], nullptr, 10)),
                         .daughter_id = static_cast<MotherId_t>(
-                            pre_dash == 2 ? strtol(argv[1], nullptr, 10) : NO_DAUGHTERBOARD),
+                            pre_dash == 3 ? strtol(argv[1], nullptr, 10) : NO_DAUGHTERBOARD),
                     },
             },
         .row = static_cast<uint16_t>(strtol(argv[dashloc + 2], nullptr, 10)),
@@ -49,14 +50,18 @@ int main(int argc, const char **argv) {
         .connect = static_cast<uint16_t>(strtol(argv[dashloc + 4], nullptr, 10)) > 0,
     };
 
+    std::cout << "Connecting...\n";
     IrlDriver driver{argv[1]};
+    std::cout << "Connected: " << driver.connected() << "\n";
 
     bool retry = false;
     bool good = false;
     do {
         auto topo_r = driver.queryTopology();
         if (topo_r.isError()) {
-            std::cout << "Failed to get topo: " << *(topo_r.getErr());
+            std::cout << "Failed to get topo. Error: " << *(topo_r.getErr()) << std::endl;
+        } else {
+            std::cout << "Got topo!" << std::endl;
         }
         auto topo = topo_r.getData();
 
@@ -74,7 +79,7 @@ int main(int argc, const char **argv) {
         } else {
             good = true;
         }
-    } while (!retry);
+    } while (retry);
 
     if (good) {
         std::cout << "Successfully programmed!\n";
