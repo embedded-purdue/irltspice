@@ -334,8 +334,8 @@ NetlistVertexIdx Netlist::new_vertex(std::string_view name,
     NetlistVertexIdx idx = alloc_vertex_slot();
     // Initialize the vertex but leave the union just default initialized
     // This checks for name collisions
-    Helper::init_vert<newKind>(this, idx, std::move(data), SmallStr{name.begin(), name.end()},
-                               EdgeList{});
+    Helper::init_vert<newKind>(this, idx, std::move(data),
+                               SmallStr{name.data(), name.data() + name.size()}, EdgeList{});
     return idx;
 }
 
@@ -559,7 +559,7 @@ void Netlist::rename_vertex(NetlistVertexIdx v, std::string_view new_name) {
     }
     IRL_ASSERT(!mVertexNames.contains(new_name), "Renaming to existing name");
     mVertexNames.erase(self);
-    mVertices.mName_arr[v.value] = SmallStr(new_name.begin(), new_name.end());
+    mVertices.mName_arr[v.value] = SmallStr(new_name.data(), new_name.data() + new_name.size());
     mVertexNames.insert(k);
 }
 
@@ -654,10 +654,11 @@ NumericParseResult NumericParseCommon(std::string_view num) {
 
     double multiplier = 1;
     double value = 0;
-    fast_float::from_chars_result result = fast_float::from_chars(num.begin(), num.end(), value);
+    fast_float::from_chars_result result =
+        fast_float::from_chars(num.data(), num.data() + num.size(), value);
 
     if (result.ec == std::errc{}) {
-        string_view suffix{result.ptr, (&num[num.size() - 1]) + 1};
+        string_view suffix{result.ptr, num.data() + num.size()};
         if (suffix.size() == 0) {
             multiplier = 1;
         } else {

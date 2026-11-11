@@ -155,7 +155,7 @@ NetlistEdgeKind portPinKind(NetlistVertexKind portKind, std::string_view kindStr
 
 nlohmann::json parseJsonc(std::string_view text) {
     // allow_exceptions = true, ignore_comments = true
-    return nlohmann::json::parse(text.begin(), text.end(), nullptr, true, true);
+    return nlohmann::json::parse(text.data(), text.data() + text.size(), nullptr, true, true);
 }
 
 uint32_t jsonToU32(nlohmann::json const &j) {

@@ -189,8 +189,8 @@ static inline bool net_count_good(vector<ParseError> errs, int num, string_view 
                     .message = string("Component: ") + string(reference) +
                                ", connected to bad number of nets. Expected: " + to_string(num) +
                                ", got: " + to_string(line.size() - 2),
-                    .problematic_region{(const char *)line[0]->underlying.end(),
-                                        (const char *)line[line.size() - 1]->underlying.begin()},
+                    .problematic_region{line[0]->underlying.data() + line[0]->underlying.size(),
+                                        line[line.size() - 1]->underlying.data()},
                     .file_name = file_name,
                     .lines_begin = line[0]->line_number,
                     .lines_end = line[line.size() - 1]->line_number,
@@ -321,7 +321,7 @@ void add_element(Netlist &netlist, vector<ParseError> &errs, ModelMap &models,
     string_view reference = line[0]->underlying;
     auto first_num = &reference[reference.find_first_of("0123456789")];
 
-    string_view reference_kind = string_view{&*reference.begin(), first_num};
+    string_view reference_kind = string_view{reference.data(), first_num};
     int reference_num;
     // Parse reference_num
     const char *end_ptr = reference.data() + reference.size();
