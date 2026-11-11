@@ -105,6 +105,16 @@ CPMAddPackage(
     URL_HASH SHA256=42f6e95cad6ec532fd372391373363b62a14af6d771056dbfc86160e6dfff7aa
 )
 
+# =================
+# Compiler options
+# =================
+# MSVC's legacy preprocessor does not implement C++20 __VA_OPT__, which
+# `irl/detail/util.hpp` relies on; /Zc:preprocessor selects the conforming one.
+# Applied after the fetch-content packages so their targets are unaffected.
+if(MSVC)
+    add_compile_options(/Zc:preprocessor)
+endif()
+
 # =======
 # Targets
 # =======
