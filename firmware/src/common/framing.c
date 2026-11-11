@@ -13,6 +13,10 @@
 #include "pb.h"
 #include <pb_decode.h>
 #include <pb_encode.h>
+#define STRUCT(NAME) (NAME)
+#else
+// MSVC very picky abt this
+#define STRUCT(NAME) NAME
 #endif
 
 // ================================================================
@@ -54,7 +58,7 @@ void frame_parser_init(FrameParser *fp, FrameBuffer *rb) {
     assert(rb != NULL);
 
     fp->rb = rb;
-    fp->state = (FrameParseState){
+    fp->state = STRUCT(FrameParseState){
         .phase = AWAITING_START,
         .cnt = 0,
         .length = 0,
