@@ -38,6 +38,8 @@ void initStopProgrammingCmd(MotherCommandPB *out);
 
 void initTopoRequestCmd(MotherCommandPB *out);
 
+void initResetCmd(MotherCommandPB *out);
+
 class TopoUnpacker {
   public:
     // Build a stitched netlist out of a topology response and a database of

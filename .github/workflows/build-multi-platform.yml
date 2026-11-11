@@ -22,8 +22,9 @@ jobs:
         include:
           - os: windows-latest
             build_type: Release
-            c_compiler: msvc
-            cxx: msvc
+            # `cl` (not `msvc`) so CMake/Ninja picks up the MSVC toolchain.
+            c_compiler: cl
+            cxx: cl
 
           - os: ubuntu-latest
             c_compiler: gcc
@@ -52,12 +53,13 @@ jobs:
         echo "source-dir=${{ github.workspace }}/software/irlc" >> "$GITHUB_OUTPUT"
         echo "build-output-dir=${{ github.workspace }}/software/irlc/build/" >> "$GITHUB_OUTPUT"
         echo "cpm-dir=$HOME/cpm-cache" >> "$GITHUB_OUTPUT"
+        # The Visual Studio generator silently ignores CMAKE_<LANG>_COMPILER_LAUNCHER,
+        # so ccache never wraps cl.exe. Ninja honors it. Leave other platforms on
+        # their default (Makefiles) generator.
         if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-          echo "build-exe-subdir=${{ matrix.build_type }}/" >> "$GITHUB_OUTPUT"
-          echo "exe-suffix=.exe" >> "$GITHUB_OUTPUT"
+          echo "generator-arg=-G Ninja" >> "$GITHUB_OUTPUT"
         else
-          echo "build-exe-subdir=" >> "$GITHUB_OUTPUT"
-          echo "exe-suffix=" >> "$GITHUB_OUTPUT"
+          echo "generator-arg=" >> "$GITHUB_OUTPUT"
         fi
 
     - name: Set CPM dir
@@ -78,11 +80,17 @@ jobs:
     - name: ccache
       uses: hendrikmuhs/ccache-action@v1.2
 
+    # Ninja needs cl.exe on PATH; the VS generator normally arranges this itself.
+    - name: Setup MSVC environment
+      if: matrix.os == 'windows-latest'
+      uses: ilammy/msvc-dev-cmd@v1
+
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
       # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
       run: >
         cmake -B ${{ steps.strings.outputs.build-output-dir }}
+        ${{ steps.strings.outputs.generator-arg }}
         -DCMAKE_CXX_COMPILER=${{ matrix.cxx }}
         -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
@@ -90,19 +98,26 @@ jobs:
         -S ${{ steps.strings.outputs.source-dir }}
 
     - name: Build
-      # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
+      # --config is only meaningful for multi-config generators; Windows now uses
+      # Ninja (single-config, set via CMAKE_BUILD_TYPE), where it is ignored.
       run: >
         cmake --build ${{ steps.strings.outputs.build-output-dir }}
         --config ${{ matrix.build_type }}
 
     - name: Test
       working-directory: ${{ steps.strings.outputs.build-output-dir }}
-      # Execute tests defined by the CMake configuration. Note that --build-config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
+      # Execute tests defined by the CMake configuration. --build-config is only
+      # meaningful for multi-config generators and is ignored by Ninja.
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
       run: ctest --build-config ${{ matrix.build_type }} --output-on-failure
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: irlc-${{ matrix.os }}-${{ matrix.c_compiler }}
-        path: ${{ steps.strings.outputs.build-output-dir }}/${{ steps.strings.outputs.build-exe-subdir }}irlc${{ steps.strings.outputs.exe-suffix }}
+        name: examples-${{ matrix.os }}-${{ matrix.c_compiler }}
+        # There is no `irlc` executable anymore (it is an INTERFACE library), so
+        # ship the example executables instead. Add patterns here as more
+        # examples are introduced.
+        path: |
+          ${{ steps.strings.outputs.build-output-dir }}examples/**/*.exe
+          ${{ steps.strings.outputs.build-output-dir }}examples/**/xbar-cli

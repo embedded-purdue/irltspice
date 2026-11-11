@@ -106,6 +106,8 @@ void initStopProgrammingCmd(MotherCommandPB *out) { (void)GET_MUTABLE(*out, stop
 
 void initTopoRequestCmd(MotherCommand *out) { (void)GET_MUTABLE(*out, topo); }
 
+void initResetCmd(MotherCommand *out) { (void)GET_MUTABLE(*out, reset); }
+
 //======================================
 // FUNCTIONS FOR READING FROM PROTOBUFS
 //======================================

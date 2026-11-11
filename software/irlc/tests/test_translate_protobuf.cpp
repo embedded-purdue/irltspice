@@ -219,6 +219,10 @@ TEST_CASE("Pack every MotherCommand variant", "[translate][proto]") {
     ::MotherCommand topoCmd{};
     irl::driver::initTopoRequestCmd(&topoCmd);
 
+    // MotherCommand.cmd: reset
+    ::MotherCommand resetCmd{};
+    irl::driver::initResetCmd(&resetCmd);
+
     // MotherCommand.cmd: stop
     ::MotherCommand stopCmd{};
     irl::driver::initStopProgrammingCmd(&stopCmd);

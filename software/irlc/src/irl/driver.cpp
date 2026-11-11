@@ -141,7 +141,7 @@ bool IrlDriver::reconnect(std::string_view serial_port) {
 
 CommandResult<NoResponseExpected> IrlDriver::resetTspice() {
     MotherCommandPB reset;
-    reset.mutable_reset();
+    initResetCmd(&reset);
     std::cout << "Sending reset!\n";
     auto seq = mIoThread->send_cmd(std::move(reset));
     return await_cmd_send(seq);
@@ -233,7 +233,7 @@ CommandResult<uint32_t> IrlDriver::endProgramming(IrlTopology const *topo) {
     std::cout << "Sending end!\n";
 
     MotherCommandPB reset;
-    reset.mutable_stop();
+    initStopProgrammingCmd(&reset);
     auto seq = mIoThread->send_cmd(std::move(reset));
     auto bad = await_cmd_send(seq);
 
@@ -282,7 +282,7 @@ CommandResult<IrlTopology> IrlDriver::queryTopology() {
     size_t initial_topo = mIoThread->get_topo_sequence_no();
 
     MotherCommandPB topo;
-    topo.mutable_topo();
+    initTopoRequestCmd(&topo);
     auto seq = mIoThread->send_cmd(std::move(topo));
     auto bad = await_cmd_send(seq);
 
