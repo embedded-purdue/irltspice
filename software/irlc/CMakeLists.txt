@@ -58,6 +58,8 @@ CPMAddPackage(
         "protobuf_BUILD_EXAMPLES OFF"
         "protobuf_BUILD_CONFORMANCE OFF"
         "protobuf_BUILD_SHARED_LIBS OFF"
+        # Use MD for the runtime
+        "protobuf_MSVC_STATIC_RUNTIME OFF"
 )
 include("${protobuf_BINARY_DIR}/cmake/protobuf/protobuf-generate.cmake")
 
