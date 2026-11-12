@@ -295,10 +295,9 @@ CommandResult<IrlTopology> IrlDriver::queryTopology() {
     do {
         resp = mIoThread->topologies_to_main().try_pop_for_timeout(500ms);
         latest_topo = mIoThread->get_topo_sequence_no();
-        // std::cout << "Got resp! Latest: "<<latest_topo <<" old:"<<initial_topo<<"
-        // second:"<<resp->second<<"\n";
-        if (resp == nullptr) {
+        if (resp == nullptr || latest_topo == initial_topo) {
             // Timeout hit. Will detect
+            resp = nullptr;
             break;
         } else if (resp->second == latest_topo) {
             // we got the most up to date. Exit

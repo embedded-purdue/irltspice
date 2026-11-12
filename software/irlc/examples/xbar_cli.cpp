@@ -73,7 +73,7 @@ int main(int argc, const char **argv) {
                 retry = true;
                 break;
             default:
-                std::cout << "Failed to program: " << *topo_r.getErr();
+                std::cout << "Failed to program: " << *prog_r.getErr();
                 break;
             }
         } else {
