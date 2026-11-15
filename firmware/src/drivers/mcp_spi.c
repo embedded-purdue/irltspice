@@ -6,9 +6,9 @@
 
 int address_select(int pot);
 
-void init_mcp_spi(int sck, int sda, int sdo, int cs, int baudrate, spi_inst_t *spi, MCP_SPI *mcp) {
+void init_mcp_spi(int sck, int sdi, int sdo, int cs, int baudrate, spi_inst_t *spi, MCP_SPI *mcp) {
     gpio_set_function(sck, 1);
-    gpio_set_function(sda, 1);
+    gpio_set_function(sdi, 1);
     gpio_set_function(cs, 1);
     gpio_set_function(sdo, 1);
     spi_init(spi, baudrate);
@@ -51,14 +51,4 @@ void reset_resistance(MCP_SPI *mcp, int pot) {
     spi_write16_blocking(mcp->spi, &src, 1);
 }
 
-int address_select(int pot) {
-    int address = 0;
-    if (pot == 1) {
-        address = 1;
-    } else if (pot == 2) {
-        address = 6;
-    } else if (pot == 3) {
-        address = 7;
-    }
-    return address;
-}
+m
