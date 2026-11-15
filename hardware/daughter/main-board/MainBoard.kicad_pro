@@ -513,6 +513,10 @@
       {
         "netclass": "5V",
         "pattern": "-5V"
+      },
+      {
+        "netclass": "5V",
+        "pattern": "GND"
       }
     ]
   },
