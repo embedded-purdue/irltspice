@@ -15,6 +15,7 @@ hardware/**/**bak
 hardware/**/fp-info-cache
 hardware/**/_autosave-*
 hardware/**/*.kicad_prl
+hardware/**/.history
 
 # ========
 # Software
