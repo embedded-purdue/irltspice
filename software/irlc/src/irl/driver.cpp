@@ -5,6 +5,7 @@
 #include <format>
 #include <iostream>
 #include <memory>
+#include <string_view>
 #include <variant>
 #include <vector>
 
@@ -49,10 +50,18 @@ class CRF {
                                              .code = CommandErrorCode::PORT_CLOSED});
     }
 
+    template <typename T>
+    static CommandResult<T> unexpected_response_type(std::string_view expected,
+                                                     std::string_view got) {
+        return CommandResult<T>(CommandError{
+            .msg = std::format("Got response of unexpected type: {} - expected: {}", expected, got),
+            .code = CommandErrorCode::UNEXPECTED_RESPONSE_TYPE});
+    }
+
     template <typename T> static CommandResult<T> cmd_count_mismatch(uint32_t tx, uint32_t rx) {
         return CommandResult<T>(CommandError{
             .msg = std::format("Mismatched sent vs ack-ed commands. Sent: {}, ack-ed: {}", tx, rx),
-            .code = CommandErrorCode::PORT_CLOSED});
+            .code = CommandErrorCode::CMD_COUNT_MISMATCH});
     }
 
     template <typename T> static CommandResult<T> tx_failed() {
@@ -68,6 +77,17 @@ class CRF {
 std::ostream &operator<<(std::ostream &os, const CommandError &err) {
     os << std::format("[ERROR, Code: {}, Msg: \"{}\"]", (int)err.code, err.msg);
     return os;
+}
+
+static std::string_view get_response_kind_name(const CommandResponsePB &resp) {
+    auto active_case = resp.data_case();
+    if (active_case == CommandResponsePB::DATA_NOT_SET) {
+        return "UNSET"; // Or handle unset case
+    }
+
+    const google::protobuf::FieldDescriptor *field =
+        CommandResponsePB::descriptor()->FindFieldByNumber(active_case);
+    return field ? field->name() : "";
 }
 
 IrlDriver::IrlDriver(std::string_view serial_port, DriverOptions &&opts)
@@ -255,6 +275,9 @@ CommandResult<uint32_t> IrlDriver::endProgramming(IrlTopology const *topo) {
     } while (resp);
 
     if (resp) {
+        if (!resp->has_stop()) {
+            return CRF::unexpected_response_type<uint32_t>("stop", get_response_kind_name(*resp));
+        }
         std::cout << "Got end w/ count: " << resp->stop().complete_count() << "\n";
         return CRF::ok(uint32_t(resp->stop().complete_count()));
     } else {

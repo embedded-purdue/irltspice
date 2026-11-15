@@ -30,6 +30,7 @@ enum class CommandErrorCode {
     TIMEOUT_RX,
     TIMEOUT_TX,
     TX_FAILED,
+    UNEXPECTED_RESPONSE_TYPE,
     CMD_COUNT_MISMATCH,
     CHECKSUM_ERROR,
     OTHER_SYSTEM,
