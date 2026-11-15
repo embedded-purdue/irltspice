@@ -4,54 +4,76 @@
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
+#include <optional>
 #include <span>
 #include <string_view>
+#include <vector>
 
 #include <irl/driver.hpp>
-
-#include "irl/netlist.hpp"
 
 using namespace irl;
 using namespace irl::driver;
 
 void print_usage(const char *name) {
-    printf("Usage: %s SERIAL_PORT MOTHER_ID [DAUGHTER_ID] -- IC_ID ROW COL ON/OFF\n"
-           "  where ON/OFF is 1/0\n",
-           name);
+    printf(
+        "Usage: %s SERIAL_PORT -m MOTHER_ID [-d DAUGHTER_ID] [-t TIMEOUT_MS] IC_ID ROW COL ON/OFF\n"
+        "  where ON/OFF is 1/0\n",
+        name);
+}
+
+std::optional<std::string_view> try_pop_flag(std::string_view flag,
+                                             std::vector<std::string_view> &args) {
+    for (auto iter = args.begin(); iter != args.end(); iter++) {
+        if (*iter == flag) {
+            auto next = iter;
+            next++;
+            if (next == args.end()) {
+                break;
+            }
+            std::string_view out = *next;
+            next++;
+            args.erase(iter, next);
+            return out;
+        }
+    }
+    return std::nullopt;
+}
+
+std::string_view pop_flag(std::string_view flag, std::vector<std::string_view> &args) {
+    auto out = try_pop_flag(flag, args);
+    if (!out) {
+        std::cout << "Couldn't find flag: " << flag << std::endl;
+        std::exit(-1);
+    }
+    return *out;
 }
 
 int main(int argc, const char **argv) {
-    int dashloc = -1;
+
+    std::vector<std::string_view> args;
     for (int i = 1; i < argc; i++) {
-        if (std::string_view{argv[i]} == "--") {
-            dashloc = i;
-        }
+        args.push_back(argv[i]);
     }
-    int pre_dash = dashloc - 1;
-    int post_dash = argc - 1 - dashloc;
-    if (dashloc < 0 || pre_dash < 2 || pre_dash > 3 || post_dash != 4) {
-        print_usage(argv[0]);
-        return -1;
-    }
+
+    MotherId_t mother_id = strtol(pop_flag("-m", args).data(), nullptr, 10);
+    auto daughter_id_o = try_pop_flag("-d", args);
+    DaughterId_t daughter_id =
+        daughter_id_o ? strtol((*daughter_id_o).data(), nullptr, 10) : NO_DAUGHTERBOARD;
+    size_t timeout = strtol(try_pop_flag("-t", args).value_or("100").data(), nullptr, 10);
 
     ProgramXbar pxb{
         .xbarId =
             XbarId{
-                .ic_id = static_cast<uint16_t>(strtol(argv[dashloc + 1], nullptr, 10)),
-                .board_id =
-                    BoardId{
-                        .mother_id = static_cast<MotherId_t>(strtol(argv[2], nullptr, 10)),
-                        .daughter_id = static_cast<MotherId_t>(
-                            pre_dash == 3 ? strtol(argv[1], nullptr, 10) : NO_DAUGHTERBOARD),
-                    },
+                .ic_id = static_cast<uint16_t>(strtol(args[1].data(), nullptr, 10)),
+                .board_id = BoardId{.mother_id = mother_id, .daughter_id = daughter_id},
             },
-        .row = static_cast<uint16_t>(strtol(argv[dashloc + 2], nullptr, 10)),
-        .col = static_cast<uint16_t>(strtol(argv[dashloc + 3], nullptr, 10)),
-        .connect = static_cast<uint16_t>(strtol(argv[dashloc + 4], nullptr, 10)) > 0,
+        .row = static_cast<uint16_t>(strtol(args[2].data(), nullptr, 10)),
+        .col = static_cast<uint16_t>(strtol(args[3].data(), nullptr, 10)),
+        .connect = static_cast<uint16_t>(strtol(args[4].data(), nullptr, 10)) > 0,
     };
 
     std::cout << "Connecting...\n";
-    IrlDriver driver{argv[1]};
+    IrlDriver driver{args[0], {.rx_timeout{timeout}}};
     std::cout << "Connected: " << driver.connected() << "\n";
 
     bool retry = false;

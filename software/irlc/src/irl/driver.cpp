@@ -70,15 +70,16 @@ std::ostream &operator<<(std::ostream &os, const CommandError &err) {
     return os;
 }
 
-IrlDriver::IrlDriver(std::string_view serial_port)
-    : mIoThread(std::make_unique<IoThread>()), mTopoDb(std::make_unique<LazyTopologyDB>()) {
+IrlDriver::IrlDriver(std::string_view serial_port, DriverOptions &&opts)
+    : mIoThread(std::make_unique<IoThread>()), mTopoDb(std::make_unique<LazyTopologyDB>()),
+      mOpts(std::move(opts)) {
     reconnect(serial_port);
 }
 
 // Wait for an already sent command get confirmed as transmitted and return an error if it fails
 CommandResult<NoResponseExpected> IrlDriver::await_cmd_send(size_t seq_no,
                                                             std::chrono::milliseconds timeout) {
-    auto opt = mIoThread->await_cmd(seq_no, 100ms);
+    auto opt = mIoThread->await_cmd(seq_no, mOpts.tx_timeout);
 
     if (!opt) {
         return CRF::timeout_tx<NoResponseExpected>();
@@ -109,13 +110,13 @@ bool IrlDriver::connected() { return mIoThread->get_connected(); }
 
 void IrlDriver::disconnect() {
     auto seq = mIoThread->send_disconnect();
-    auto opt = mIoThread->await_cmd(seq, 100ms);
+    auto opt = mIoThread->await_cmd(seq, mOpts.tx_timeout);
     IRL_ASSERT(opt && *opt == OK, "Failed to disconnect!");
 }
 
 bool IrlDriver::reconnect(std::string_view serial_port) {
     auto seq = mIoThread->send_connect(serial_port);
-    auto opt = mIoThread->await_cmd(seq, 100ms);
+    auto opt = mIoThread->await_cmd(seq, mOpts.tx_timeout);
 
     if (!opt) {
         std::cout << "Reconnect failed. No response!\n";
@@ -243,7 +244,7 @@ CommandResult<uint32_t> IrlDriver::endProgramming(IrlTopology const *topo) {
 
     std::unique_ptr<CommandResponsePB> resp;
     do {
-        resp = mIoThread->other_resps_to_main().try_pop_for_timeout(100ms);
+        resp = mIoThread->other_resps_to_main().try_pop_for_timeout(mOpts.rx_timeout);
         if (!resp) {
             break;
         } else if (resp->has_stop()) {
@@ -254,6 +255,7 @@ CommandResult<uint32_t> IrlDriver::endProgramming(IrlTopology const *topo) {
     } while (resp);
 
     if (resp) {
+        std::cout << "Got end w/ count: " << resp->stop().complete_count() << "\n";
         return CRF::ok(uint32_t(resp->stop().complete_count()));
     } else {
         return CRF::timeout_rx<uint32_t>();
@@ -293,7 +295,7 @@ CommandResult<IrlTopology> IrlDriver::queryTopology() {
     std::unique_ptr<std::pair<TopologyResponse, size_t>> resp;
     size_t latest_topo = initial_topo;
     do {
-        resp = mIoThread->topologies_to_main().try_pop_for_timeout(500ms);
+        resp = mIoThread->topologies_to_main().try_pop_for_timeout(mOpts.rx_timeout);
         latest_topo = mIoThread->get_topo_sequence_no();
         if (resp == nullptr || latest_topo == initial_topo) {
             // Timeout hit. Will detect

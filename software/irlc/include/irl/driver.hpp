@@ -78,6 +78,13 @@ struct NoResponseExpected {};
 class IoThread;
 class LazyTopologyDB;
 
+struct DriverOptions {
+    // How long should we wait for the IO thread to send a command
+    std::chrono::milliseconds tx_timeout{100};
+    // How long after senging a command should we wait for a response
+    std::chrono::milliseconds rx_timeout{100};
+};
+
 // The class used for interfacing with the tspice
 // The software follows a single-producer single-consumer architecture
 // Each connected board gets its own IoThread object, and each IoThread is associated with exactly
@@ -91,6 +98,8 @@ class IrlDriver {
     std::unique_ptr<IoThread> mIoThread;
     // Pimpl for the store of topologies
     std::unique_ptr<LazyTopologyDB> mTopoDb;
+    // Options
+    DriverOptions mOpts;
 
     using CmdIter = detail::VirtInputIter<ProgrammingCommand>;
     CommandResult<NoResponseExpected> doProgrammingInner(IrlTopology const *topo, CmdIter &cmd_i,
@@ -108,7 +117,7 @@ class IrlDriver {
     // If successful, will spawn a new thread to handle background operations
     // (sending/receiving from the scope).
     // If this fails, connected() will return false.
-    IrlDriver(std::string_view serial_port);
+    IrlDriver(std::string_view serial_port, DriverOptions && = {});
 
     // Destructor. Must be in other TU because of the whole IoThread thing.
     ~IrlDriver();
