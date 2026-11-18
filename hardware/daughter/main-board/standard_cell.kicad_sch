@@ -6198,7 +6198,7 @@
 		)
 		(uuid "4f680f33-0dc6-4fee-bad6-fd46cf753900")
 	)
-	(label "R1A"
+	(label "R1B"
 		(at 55.88 45.72 0)
 		(effects
 			(font
@@ -7408,7 +7408,7 @@
 		)
 		(uuid "c8cc06d6-97e1-41a8-8f41-3f10835b4839")
 	)
-	(label "R1B"
+	(label "R1A"
 		(at 55.88 48.26 0)
 		(effects
 			(font
