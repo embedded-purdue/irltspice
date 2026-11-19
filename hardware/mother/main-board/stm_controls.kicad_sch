@@ -20242,7 +20242,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "fd5a3a22-86d3-48b6-8858-6838485345c2")
-		(property "Reference" "U4"
+		(property "Reference" "U3"
 			(at 256.54 113.0299 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -20453,7 +20453,7 @@
 		(instances
 			(project "MainBoard"
 				(path "/5dd933ff-bc57-4741-8957-85d8c6e75130/72af25e1-7cdc-412a-8304-78174a178e92"
-					(reference "U4")
+					(reference "U3")
 					(unit 2)
 				)
 			)
